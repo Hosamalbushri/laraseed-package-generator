@@ -16,8 +16,10 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         $packageRoot = realpath(__DIR__ . '/../');
-        if ($packageRoot && ! getenv('TESTBENCH_WORKING_PATH')) {
+        if ($packageRoot) {
             putenv("TESTBENCH_WORKING_PATH={$packageRoot}");
+            $_SERVER['TESTBENCH_WORKING_PATH'] = $packageRoot;
+            $_ENV['TESTBENCH_WORKING_PATH'] = $packageRoot;
         }
 
         require_once __DIR__ . '/helpers.php';
@@ -44,8 +46,8 @@ abstract class TestCase extends BaseTestCase
     {
         // If testbench created a dummy vendor directory inside orchestra/testbench-core/laravel/vendor, clean it up
         $testbenchVendor = base_path('vendor');
-        if (file_exists($testbenchVendor) && str_contains($testbenchVendor, 'testbench-core/laravel/vendor')) {
-            (new \Illuminate\Filesystem\Filesystem)->deleteDirectory($testbenchVendor);
+        if (file_exists($testbenchVendor) && is_link($testbenchVendor)) {
+            @unlink($testbenchVendor);
         }
 
         parent::tearDown();
@@ -53,14 +55,42 @@ abstract class TestCase extends BaseTestCase
 
     public function getSubprocessAutoloadPath(): string
     {
-        return file_exists(base_path('vendor/autoload.php'))
-            ? base_path('vendor/autoload.php')
-            : (realpath(__DIR__ . '/../vendor/autoload.php') ?: (realpath(__DIR__ . '/../../vendor/autoload.php') ?: 'vendor/autoload.php'));
+        $packageRoot = getenv('TESTBENCH_WORKING_PATH') ?: realpath(__DIR__ . '/../');
+        $candidates = array_filter([
+            $packageRoot ? realpath($packageRoot . '/vendor/autoload.php') : null,
+            realpath(__DIR__ . '/../vendor/autoload.php'),
+            realpath(__DIR__ . '/../../vendor/autoload.php'),
+            realpath(__DIR__ . '/../../../vendor/autoload.php'),
+            realpath(__DIR__ . '/../../../../vendor/autoload.php'),
+            realpath(base_path('vendor/autoload.php')),
+        ]);
+
+        foreach ($candidates as $candidate) {
+            if ($candidate && file_exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return realpath(__DIR__ . '/../vendor/autoload.php') ?: base_path('vendor/autoload.php');
     }
 
     public function getSubprocessHelpersPath(): string
     {
-        return realpath(__DIR__ . '/helpers.php') ?: __DIR__ . '/helpers.php';
+        $packageRoot = getenv('TESTBENCH_WORKING_PATH') ?: realpath(__DIR__ . '/../');
+        $candidates = array_filter([
+            $packageRoot ? realpath($packageRoot . '/tests/helpers.php') : null,
+            realpath(__DIR__ . '/helpers.php'),
+            realpath(__DIR__ . '/../tests/helpers.php'),
+            realpath(__DIR__ . '/../../tests/helpers.php'),
+        ]);
+
+        foreach ($candidates as $cand) {
+            if ($cand && file_exists($cand)) {
+                return $cand;
+            }
+        }
+
+        return realpath(__DIR__ . '/helpers.php') ?: (__DIR__ . '/helpers.php');
     }
 
     /**
@@ -68,6 +98,91 @@ abstract class TestCase extends BaseTestCase
      */
     protected function ensureTestbenchHostFiles(): void
     {
+        // 1. Ensure bootstrap/autoload.php exists and correctly loads root autoloader and helpers
+        $autoloadPhp = base_path('bootstrap/autoload.php');
+        @mkdir(dirname($autoloadPhp), 0755, true);
+        $autoloadContent = <<<'PHP'
+<?php
+
+if (! defined('TESTBENCH_WORKING_PATH') && is_string(getenv('TESTBENCH_WORKING_PATH'))) {
+    define('TESTBENCH_WORKING_PATH', getenv('TESTBENCH_WORKING_PATH'));
+}
+
+$candidates = array_filter([
+    defined('TESTBENCH_WORKING_PATH') ? TESTBENCH_WORKING_PATH . '/vendor/autoload.php' : null,
+    dirname(__DIR__, 5) . '/vendor/autoload.php',
+    dirname(__DIR__, 7) . '/vendor/autoload.php',
+    dirname(__DIR__, 4) . '/vendor/autoload.php',
+    dirname(__DIR__, 2) . '/vendor/autoload.php',
+    __DIR__ . '/../vendor/autoload.php',
+]);
+
+foreach ($candidates as $cand) {
+    if ($cand && file_exists($cand)) {
+        require_once $cand;
+        break;
+    }
+}
+
+$helpersCandidates = array_filter([
+    defined('TESTBENCH_WORKING_PATH') ? TESTBENCH_WORKING_PATH . '/tests/helpers.php' : null,
+    dirname(__DIR__, 5) . '/tests/helpers.php',
+    dirname(__DIR__, 7) . '/tests/helpers.php',
+    dirname(__DIR__, 4) . '/tests/helpers.php',
+    dirname(__DIR__, 2) . '/tests/helpers.php',
+]);
+
+foreach ($helpersCandidates as $helper) {
+    if ($helper && file_exists($helper)) {
+        require_once $helper;
+        break;
+    }
+}
+PHP;
+        file_put_contents($autoloadPhp, $autoloadContent);
+
+        // 2. Ensure base_path('artisan') exists and is executable across all Testbench versions
+        $artisanFile = base_path('artisan');
+        $artisanContent = <<<'PHP'
+#!/usr/bin/env php
+<?php
+
+use Illuminate\Foundation\Application;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Output\ConsoleOutput;
+
+define('LARAVEL_START', microtime(true));
+
+if (file_exists(__DIR__ . '/bootstrap/autoload.php')) {
+    require_once __DIR__ . '/bootstrap/autoload.php';
+}
+
+/** @var Application $app */
+$app = require_once __DIR__ . '/bootstrap/app.php';
+
+if (method_exists($app, 'handleCommand')) {
+    $status = $app->handleCommand(new ArgvInput);
+    exit($status);
+}
+
+$kernel = $app->make(\Illuminate\Contracts\Console\Kernel::class);
+$status = $kernel->handle(
+    $input = new ArgvInput,
+    new ConsoleOutput
+);
+$kernel->terminate($input, $status);
+exit($status);
+PHP;
+        file_put_contents($artisanFile, $artisanContent);
+        @chmod($artisanFile, 0755);
+
+        // 3. Ensure tests/TestCase.php exists so composer dump-autoload does not fail on default classmap
+        $dummyTest = base_path('tests/TestCase.php');
+        if (! file_exists($dummyTest)) {
+            @mkdir(dirname($dummyTest), 0755, true);
+            file_put_contents($dummyTest, "<?php\n\nnamespace Tests;\n\nclass TestCase {}\n");
+        }
+
         $appServiceProviderFile = base_path('app/Providers/AppServiceProvider.php');
         if (! file_exists($appServiceProviderFile)) {
             @mkdir(dirname($appServiceProviderFile), 0755, true);
@@ -164,7 +279,10 @@ PHP;
 if (! class_exists(\Webkul\Core\Packages\OptionalPackageManifestLoader::class, false)) {
     $candidates = array_filter([
         (getenv('TESTBENCH_WORKING_PATH') ? rtrim(getenv('TESTBENCH_WORKING_PATH'), '/') . '/tests/helpers.php' : null),
+        dirname(__DIR__, 5) . '/tests/helpers.php',
+        dirname(__DIR__, 7) . '/tests/helpers.php',
         dirname(__DIR__, 4) . '/tests/helpers.php',
+        dirname(__DIR__, 3) . '/tests/helpers.php',
         dirname(__DIR__, 2) . '/tests/helpers.php',
         __DIR__ . '/../../tests/helpers.php',
     ]);
