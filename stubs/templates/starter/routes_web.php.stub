@@ -1,0 +1,19 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use {{ NAMESPACE }}\Web\Http\Controllers\AccountController;
+use {{ NAMESPACE }}\Web\Http\Controllers\HomeController;
+use {{ NAMESPACE }}\Web\Http\Controllers\PageController;
+
+Route::name('{{ PACKAGE_KEY }}.web.')->group(function () {
+    Route::get('branding.css', [HomeController::class, 'brandingCss'])->name('branding.css');
+    Route::get('/', [HomeController::class, 'index'])->name('home');
+    Route::get('pages/{page?}', [PageController::class, 'show'])->name('pages.show');
+
+    // Protected routes are only registered when authentication is explicitly enabled
+    if ((bool) config('{{ PACKAGE_KEY }}_web.auth.enabled', false)) {
+        Route::middleware('{{ PACKAGE_KEY }}_auth')->group(function () {
+            Route::get('account/dashboard', [AccountController::class, 'dashboard'])->name('account.dashboard');
+        });
+    }
+});

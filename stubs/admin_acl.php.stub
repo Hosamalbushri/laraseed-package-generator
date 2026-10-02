@@ -1,0 +1,10 @@
+<?php
+
+return [
+    [
+        'key'   => '{{ PACKAGE_KEY }}',
+        'name'  => '{{ PACKAGE_KEY }}_admin::app.admin.title',
+        'route' => 'admin.{{ PACKAGE_KEY }}.index',
+        'sort'  => 99,
+    ],
+];

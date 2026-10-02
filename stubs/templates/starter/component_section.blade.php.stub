@@ -1,0 +1,31 @@
+@props([
+    'title' => null,
+    'subtitle' => null,
+    'description' => null,
+])
+
+@php
+    $sub = $subtitle ?? $description;
+@endphp
+
+<section {{ $attributes->merge(['class' => 'py-12 sm:py-16 lg:py-20']) }}>
+    <x-{{ PACKAGE_KEY }}_web::container>
+        @if ($title || $sub)
+            <div class="mx-auto max-w-3xl text-center mb-10 sm:mb-12">
+                @if ($title)
+                    <h2 class="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+                        {{ $title }}
+                    </h2>
+                @endif
+
+                @if ($sub)
+                    <p class="mt-4 text-lg text-gray-600 dark:text-gray-300">
+                        {{ $sub }}
+                    </p>
+                @endif
+            </div>
+        @endif
+
+        {{ $slot }}
+    </x-{{ PACKAGE_KEY }}_web::container>
+</section>

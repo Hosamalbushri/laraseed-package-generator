@@ -1,0 +1,28 @@
+{
+    "name": "{{ COMPOSER_NAME }}",
+    "description": "Laraseed {{ PACKAGE }} Package",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "{{ ESCAPED_NAMESPACE }}\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "{{ ESCAPED_NAMESPACE }}\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laraseed": {
+            "id": "{{ PACKAGE_ID }}",
+            "type": "optional",
+            "provider": "{{ ESCAPED_PROVIDER_FQN }}"
+        },
+        "laravel": {
+            "providers": [
+                "{{ ESCAPED_PROVIDER_FQN }}"
+            ]
+        }
+    }
+}

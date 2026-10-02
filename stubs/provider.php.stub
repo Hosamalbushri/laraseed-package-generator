@@ -1,0 +1,57 @@
+<?php
+
+namespace {{ NAMESPACE }}\Providers;
+
+use Illuminate\Support\ServiceProvider;
+
+class {{ PROVIDER_CLASS }} extends ServiceProvider
+{
+    /**
+     * Register services.
+     */
+    public function register(): void
+    {
+        if (file_exists(__DIR__ . '/../Config/{{ PACKAGE_ID }}.php')) {
+            $this->mergeConfigFrom(
+                __DIR__ . '/../Config/{{ PACKAGE_ID }}.php',
+                '{{ PACKAGE_ID }}'
+            );
+        }
+    }
+
+    /**
+     * Bootstrap services.
+     */
+    public function boot(): void
+    {
+        if (is_dir(__DIR__ . '/../Resources/lang')) {
+            $this->loadTranslationsFrom(__DIR__ . '/../Resources/lang', '{{ PACKAGE_ID }}');
+        }
+
+        if (is_dir(__DIR__ . '/../Resources/views')) {
+            $this->loadViewsFrom(__DIR__ . '/../Resources/views', '{{ PACKAGE_ID }}');
+        }
+
+        if (file_exists(__DIR__ . '/../Routes/web.php')) {
+            $this->loadRoutesFrom(__DIR__ . '/../Routes/web.php');
+        }
+
+        if (file_exists(__DIR__ . '/../Routes/api.php')) {
+            $this->loadRoutesFrom(__DIR__ . '/../Routes/api.php');
+        }
+
+        if (is_dir(__DIR__ . '/../Database/Migrations')) {
+            $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
+        }
+
+        if ($this->app->runningInConsole() && is_dir(__DIR__ . '/../Console/Commands')) {
+            $commands = [];
+            foreach (glob(__DIR__ . '/../Console/Commands/*.php') as $file) {
+                $commands[] = '{{ NAMESPACE }}\\Console\\Commands\\' . basename($file, '.php');
+            }
+            if ($commands !== []) {
+                $this->commands($commands);
+            }
+        }
+    }
+}

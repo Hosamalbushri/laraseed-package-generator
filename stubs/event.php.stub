@@ -1,0 +1,10 @@
+<?php
+
+namespace {{ NAMESPACE }}\Events;
+
+use Illuminate\Queue\SerializesModels;
+
+class {{ EVENT_NAME }}
+{
+    use SerializesModels;
+}

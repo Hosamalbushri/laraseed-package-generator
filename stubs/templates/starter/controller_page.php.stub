@@ -1,0 +1,24 @@
+<?php
+
+namespace {{ NAMESPACE }}\Web\Http\Controllers;
+
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+
+class PageController extends Controller
+{
+    public function show(Request $request, string $page = 'about'): View
+    {
+        if ($request->has('locale') && in_array($request->query('locale'), ['en', 'ar'])) {
+            app()->setLocale($request->query('locale'));
+            session(['locale' => $request->query('locale')]);
+        } elseif (session()->has('locale')) {
+            app()->setLocale(session('locale'));
+        }
+
+        return view('{{ PACKAGE_KEY }}_web::pages.show', [
+            'page' => $page,
+        ]);
+    }
+}

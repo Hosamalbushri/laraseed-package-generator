@@ -1,0 +1,24 @@
+{
+    "name": "{{ COMPOSER_NAME }}",
+    "description": "Laraseed {{ PACKAGE }} Optional Package",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "{{ ESCAPED_NAMESPACE }}\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "{{ ESCAPED_NAMESPACE }}\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laraseed": {
+            "id": "{{ PACKAGE_ID }}",
+            "type": "optional",
+            "provider": "{{ ESCAPED_PROVIDER_FQN }}",
+            "concord_module": "{{ ESCAPED_MODULE_FQN }}"
+        }
+    }
+}

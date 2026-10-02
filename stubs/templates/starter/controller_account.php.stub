@@ -1,0 +1,42 @@
+<?php
+
+namespace {{ NAMESPACE }}\Web\Http\Controllers;
+
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+
+class AccountController extends Controller
+{
+    /**
+     * Display the authenticated user dashboard.
+     *
+     * @throws \RuntimeException
+     */
+    public function dashboard(Request $request): View
+    {
+        $authConfig = config('{{ PACKAGE_KEY }}_web.auth', []);
+        $enabled = (bool) ($authConfig['enabled'] ?? false);
+
+        if (! $enabled) {
+            throw new \RuntimeException(
+                'Authentication is disabled for package [{{ PACKAGE_KEY }}].'
+            );
+        }
+
+        $guard = $authConfig['guard'] ?? null;
+        if (! $guard || ! config("auth.guards.{$guard}")) {
+            throw new \RuntimeException(sprintf(
+                'AccountController error: Package [%s] specifies guard [%s], which is not defined in config/auth.php.',
+                '{{ PACKAGE_KEY }}',
+                $guard ?? 'null'
+            ));
+        }
+
+        $user = auth()->guard($guard)->user();
+
+        return view('{{ PACKAGE_KEY }}_web::account.dashboard', [
+            'user' => $user,
+        ]);
+    }
+}

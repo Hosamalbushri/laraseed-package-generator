@@ -1,0 +1,43 @@
+<?php
+
+namespace {{ NAMESPACE }}\Admin\Providers;
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\ServiceProvider;
+
+class AdminServiceProvider extends ServiceProvider
+{
+    /**
+     * Register services.
+     */
+    public function register(): void
+    {
+        if (file_exists(__DIR__ . '/../Config/menu.php')) {
+            $this->mergeConfigFrom(__DIR__ . '/../Config/menu.php', 'menu.admin');
+        }
+
+        if (file_exists(__DIR__ . '/../Config/acl.php')) {
+            $this->mergeConfigFrom(__DIR__ . '/../Config/acl.php', 'acl');
+        }
+    }
+
+    /**
+     * Bootstrap services.
+     */
+    public function boot(): void
+    {
+        if (file_exists(__DIR__ . '/../Routes/web.php')) {
+            Route::middleware(['web', 'user'])
+                ->prefix(config('app.admin_path'))
+                ->group(__DIR__ . '/../Routes/web.php');
+        }
+
+        if (is_dir(__DIR__ . '/../Resources/views')) {
+            $this->loadViewsFrom(__DIR__ . '/../Resources/views', '{{ PACKAGE_KEY }}_admin');
+        }
+
+        if (is_dir(__DIR__ . '/../Resources/lang')) {
+            $this->loadTranslationsFrom(__DIR__ . '/../Resources/lang', '{{ PACKAGE_KEY }}_admin');
+        }
+    }
+}

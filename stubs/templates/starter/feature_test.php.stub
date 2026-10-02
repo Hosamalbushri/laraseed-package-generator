@@ -1,0 +1,40 @@
+<?php
+
+namespace {{ NAMESPACE }}\Tests\Feature\Web;
+
+use Tests\TestCase;
+
+class WebPageTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (! app()->providerIsLoaded(\{{ NAMESPACE }}\Web\Providers\WebServiceProvider::class)) {
+            app()->register(\{{ NAMESPACE }}\Web\Providers\WebServiceProvider::class);
+        }
+    }
+
+    public function test_web_routes_are_accessible_and_render_starter_content(): void
+    {
+        $response = $this->get(route('{{ PACKAGE_KEY }}.web.home'));
+        $response->assertStatus(200);
+        $response->assertSee(trans('{{ PACKAGE_KEY }}_web::app.web.title'));
+
+        $pageResponse = $this->get(route('{{ PACKAGE_KEY }}.web.pages.show', ['page' => 'about']));
+        $pageResponse->assertStatus(200);
+        $pageResponse->assertSee('about');
+    }
+
+    public function test_english_and_arabic_translations_have_parity(): void
+    {
+        $en = require __DIR__ . '/../../../src/Web/Resources/lang/en/app.php';
+        $ar = require __DIR__ . '/../../../src/Web/Resources/lang/ar/app.php';
+
+        $this->assertSame(array_keys($en['web']), array_keys($ar['web']));
+        $this->assertSame(array_keys($en['web']['auth']), array_keys($ar['web']['auth']));
+        $this->assertSame(array_keys($en['web']['hero']), array_keys($ar['web']['hero']));
+        $this->assertSame(array_keys($en['web']['highlights']), array_keys($ar['web']['highlights']));
+        $this->assertSame(array_keys($en['web']['footer']), array_keys($ar['web']['footer']));
+    }
+}

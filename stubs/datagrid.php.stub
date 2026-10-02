@@ -1,0 +1,52 @@
+<?php
+
+namespace {{ DATAGRID_NAMESPACE }};
+
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\DB;
+use Webkul\DataGrid\DataGrid;
+{{ MODEL_IMPORT }}
+
+class {{ DATAGRID_CLASS }} extends DataGrid
+{
+    /**
+     * Primary column.
+     *
+     * @var string
+     */
+    protected $primaryColumn = 'id';
+
+    /**
+     * Prepare query builder.
+     */
+    public function prepareQueryBuilder(): Builder
+    {
+        $queryBuilder = {{ QUERY_BUILDER }};
+
+        return $queryBuilder;
+    }
+
+    /**
+     * Prepare columns.
+     */
+    public function prepareColumns(): void
+    {
+        $this->addColumn([
+            'index'      => 'id',
+            'label'      => 'ID',
+            'type'       => 'integer',
+            'sortable'   => true,
+            'searchable' => false,
+            'filterable' => true,
+        ]);
+
+        $this->addColumn([
+            'index'      => 'created_at',
+            'label'      => 'Created At',
+            'type'       => 'datetime',
+            'sortable'   => true,
+            'searchable' => false,
+            'filterable' => true,
+        ]);
+    }
+}

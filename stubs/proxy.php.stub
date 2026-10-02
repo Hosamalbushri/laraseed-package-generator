@@ -1,0 +1,9 @@
+<?php
+
+namespace {{ NAMESPACE }}\Models;
+
+use Konekt\Concord\Proxies\ModelProxy;
+
+class {{ CLASS_NAME }} extends ModelProxy
+{
+}

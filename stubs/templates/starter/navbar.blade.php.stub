@@ -1,0 +1,31 @@
+@php
+    $navItems = collect(config('{{ PACKAGE_KEY }}_web.navigation', []))
+        ->sortBy('sort', SORT_NUMERIC)
+        ->all();
+@endphp
+
+<nav class="hidden md:flex items-center gap-6 text-sm font-medium">
+    @foreach ($navItems as $item)
+        @php
+            $routeName = $item['route'] ?? null;
+            $params = $item['params'] ?? [];
+            $url = $routeName && \Illuminate\Support\Facades\Route::has($routeName)
+                ? route($routeName, $params)
+                : ($item['url'] ?? '#');
+
+            $isActive = false;
+            if ($routeName && request()->routeIs($routeName)) {
+                if (empty($params) || (! empty($params['page']) && request()->route('page') === $params['page'])) {
+                    $isActive = true;
+                }
+            }
+        @endphp
+
+        <a
+            href="{{ $url }}"
+            class="transition-colors text-decoration-none {{ $isActive ? 'font-bold text-[var(--brand-color)] border-b-2 border-[var(--brand-color)] pb-1' : 'text-gray-700 hover:text-[var(--brand-color)] dark:text-gray-300 dark:hover:text-white' }}"
+        >
+            {{ trans($item['name'] ?? '') }}
+        </a>
+    @endforeach
+</nav>

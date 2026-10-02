@@ -1,0 +1,8 @@
+<?php
+
+return [
+    'admin' => [
+        'title'   => '{{ PACKAGE_TITLE }} Admin',
+        'welcome' => 'Welcome to {{ PACKAGE_TITLE }} Admin Panel.',
+    ],
+];

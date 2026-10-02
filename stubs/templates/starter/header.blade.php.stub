@@ -1,0 +1,171 @@
+<header class="sticky top-0 z-40 border-b border-gray-200 bg-white/90 backdrop-blur transition-colors dark:border-gray-800 dark:bg-gray-900/90">
+    <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+        <!-- Brand Logo & Title -->
+        <div class="flex items-center gap-3">
+            <a href="{{ route('{{ PACKAGE_KEY }}.web.home') }}" class="flex items-center gap-2 font-bold text-xl text-gray-900 dark:text-white text-decoration-none">
+                @if (config('{{ PACKAGE_KEY }}_web.branding.logo'))
+                    <img src="{{ config('{{ PACKAGE_KEY }}_web.branding.logo') }}" alt="{{ config('{{ PACKAGE_KEY }}_web.branding.name', '{{ PACKAGE_TITLE }}') }}" class="h-8 w-auto">
+                @else
+                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--brand-color)] font-extrabold text-white">
+                        {{ substr(config('{{ PACKAGE_KEY }}_web.branding.name', '{{ PACKAGE_TITLE }}'), 0, 1) }}
+                    </span>
+                @endif
+                <span>{{ config('{{ PACKAGE_KEY }}_web.branding.name') ? trans(config('{{ PACKAGE_KEY }}_web.branding.name')) : trans('{{ PACKAGE_KEY }}_web::app.web.title') }}</span>
+            </a>
+        </div>
+
+        <!-- Desktop Navigation Bar -->
+        <x-{{ PACKAGE_KEY }}_web::layouts.header.navbar />
+
+        <!-- Actions: Auth, Theme Toggle, Locale Switch & Mobile Toggle -->
+        <div class="flex items-center gap-2 sm:gap-3">
+            @php
+                $authConfig = config('{{ PACKAGE_KEY }}_web.auth', []);
+                $authEnabled = (bool) ($authConfig['enabled'] ?? false);
+                $guard = $authConfig['guard'] ?? null;
+                $isAuth = $authEnabled && $guard && auth()->guard($guard)->check();
+                $user = $isAuth ? auth()->guard($guard)->user() : null;
+            @endphp
+
+            @if ($authEnabled)
+                @if ($isAuth)
+                    <div class="hidden sm:flex items-center gap-3">
+                        <a
+                            href="{{ route('{{ PACKAGE_KEY }}.web.account.dashboard') }}"
+                            class="text-sm font-medium text-gray-700 hover:text-[var(--brand-color)] dark:text-gray-300 dark:hover:text-white text-decoration-none"
+                        >
+                            @lang('{{ PACKAGE_KEY }}_web::app.web.auth.dashboard')
+                        </a>
+
+                        @if (! empty($authConfig['routes']['logout']) && \Illuminate\Support\Facades\Route::has($authConfig['routes']['logout']))
+                            <form method="POST" action="{{ route($authConfig['routes']['logout']) }}" class="inline m-0">
+                                @csrf
+                                <button
+                                    type="submit"
+                                    class="rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 cursor-pointer bg-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)]"
+                                >
+                                    @lang('{{ PACKAGE_KEY }}_web::app.web.auth.logout')
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                @else
+                    @if (! empty($authConfig['routes']['login']) && \Illuminate\Support\Facades\Route::has($authConfig['routes']['login']))
+                        <a
+                            href="{{ route($authConfig['routes']['login']) }}"
+                            class="hidden sm:inline-flex rounded-lg bg-[var(--brand-color)] px-3 py-1.5 text-xs font-bold text-white hover:opacity-90 text-decoration-none transition-opacity focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)] focus:ring-offset-2"
+                        >
+                            @lang('{{ PACKAGE_KEY }}_web::app.web.auth.login')
+                        </a>
+                    @endif
+                @endif
+            @endif
+
+            <!-- Dark Mode Toggle -->
+            <button
+                type="button"
+                id="theme-toggle"
+                data-action="toggle-dark-mode"
+                class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 cursor-pointer border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)]"
+                aria-label="Toggle Dark Mode"
+            >
+                <svg class="h-5 w-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+                <svg class="h-5 w-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+            </button>
+
+            <!-- Language Switcher -->
+            <a
+                href="?locale={{ app()->getLocale() === 'ar' ? 'en' : 'ar' }}"
+                class="rounded-lg px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 text-decoration-none transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)]"
+                title="Switch Language"
+            >
+                {{ app()->getLocale() === 'ar' ? 'EN' : 'العربية' }}
+            </a>
+
+            <!-- Mobile Menu Toggle Button -->
+            <button
+                type="button"
+                id="mobile-menu-button"
+                data-action="toggle-mobile-menu"
+                class="md:hidden rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 cursor-pointer border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)]"
+                aria-controls="mobile-menu"
+                aria-expanded="false"
+                aria-label="Toggle navigation"
+            >
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile Responsive Menu Drawer -->
+    <div
+        id="mobile-menu"
+        class="hidden md:hidden border-t border-gray-200 bg-white px-4 pt-2 pb-4 dark:border-gray-800 dark:bg-gray-900 transition-all"
+        aria-hidden="true"
+    >
+        @php
+            $mobileNavItems = collect(config('{{ PACKAGE_KEY }}_web.navigation', []))
+                ->sortBy('sort', SORT_NUMERIC)
+                ->all();
+        @endphp
+
+        <div class="flex flex-col space-y-3 pt-2">
+            @foreach ($mobileNavItems as $item)
+                @php
+                    $routeName = $item['route'] ?? null;
+                    $params = $item['params'] ?? [];
+                    $url = $routeName && \Illuminate\Support\Facades\Route::has($routeName)
+                        ? route($routeName, $params)
+                        : ($item['url'] ?? '#');
+
+                    $isActive = false;
+                    if ($routeName && request()->routeIs($routeName)) {
+                        if (empty($params) || (! empty($params['page']) && request()->route('page') === $params['page'])) {
+                            $isActive = true;
+                        }
+                    }
+                @endphp
+
+                <a
+                    href="{{ $url }}"
+                    class="text-base text-decoration-none transition-colors {{ $isActive ? 'font-bold text-[var(--brand-color)]' : 'font-medium text-gray-700 hover:text-[var(--brand-color)] dark:text-gray-200' }}"
+                >
+                    {{ trans($item['name'] ?? '') }}
+                </a>
+            @endforeach
+
+            @if ($authEnabled)
+                <div class="border-t border-gray-200 dark:border-gray-800 pt-3">
+                    @if ($isAuth)
+                        <div class="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                            {{ $user->name ?? $user->email ?? 'Account' }}
+                        </div>
+                        <a href="{{ route('{{ PACKAGE_KEY }}.web.account.dashboard') }}" class="block text-base font-medium text-gray-700 hover:text-[var(--brand-color)] dark:text-gray-200 text-decoration-none mb-2">
+                            @lang('{{ PACKAGE_KEY }}_web::app.web.auth.dashboard')
+                        </a>
+                        @if (! empty($authConfig['routes']['logout']) && \Illuminate\Support\Facades\Route::has($authConfig['routes']['logout']))
+                            <form method="POST" action="{{ route($authConfig['routes']['logout']) }}" class="m-0">
+                                @csrf
+                                <button type="submit" class="text-base font-medium text-red-600 dark:text-red-400 bg-transparent border-0 p-0 cursor-pointer">
+                                    @lang('{{ PACKAGE_KEY }}_web::app.web.auth.logout')
+                                </button>
+                            </form>
+                        @endif
+                    @else
+                        @if (! empty($authConfig['routes']['login']) && \Illuminate\Support\Facades\Route::has($authConfig['routes']['login']))
+                            <a href="{{ route($authConfig['routes']['login']) }}" class="inline-block rounded-lg bg-[var(--brand-color)] px-4 py-2 text-sm font-bold text-white hover:opacity-90 text-decoration-none text-center">
+                                @lang('{{ PACKAGE_KEY }}_web::app.web.auth.login')
+                            </a>
+                        @endif
+                    @endif
+                </div>
+            @endif
+        </div>
+    </div>
+</header>

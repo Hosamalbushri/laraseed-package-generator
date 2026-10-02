@@ -1,0 +1,41 @@
+<?php
+
+namespace {{ NAMESPACE }}\Web\Http\Controllers;
+
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Routing\Controller;
+
+class HomeController extends Controller
+{
+    public function index(Request $request): View
+    {
+        if ($request->has('locale') && in_array($request->query('locale'), ['en', 'ar'])) {
+            app()->setLocale($request->query('locale'));
+            session(['locale' => $request->query('locale')]);
+        } elseif (session()->has('locale')) {
+            app()->setLocale(session('locale'));
+        }
+
+        return view('{{ PACKAGE_KEY }}_web::home.index');
+    }
+
+    /**
+     * Serve dynamic CSP-compliant branding stylesheet from 'self'.
+     */
+    public function brandingCss(): Response
+    {
+        $rawColor = (string) config('{{ PACKAGE_KEY }}_web.branding.color', '#0E90D9');
+        $color = preg_match('/^#([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$/', $rawColor) === 1
+            ? $rawColor
+            : '#0E90D9';
+
+        $css = ":root {\n    --brand-color: {$color};\n}\n";
+
+        return response($css, 200, [
+            'Content-Type'  => 'text/css; charset=UTF-8',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
+}

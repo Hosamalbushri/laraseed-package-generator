@@ -1,0 +1,15 @@
+<?php
+
+namespace {{ NAMESPACE }}\Models;
+
+use Illuminate\Database\Eloquent\Model;
+{{ CONTRACT_IMPORT }}class {{ CLASS_NAME }} extends Model{{ IMPLEMENTS_CONTRACT }}
+{
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+    ];
+}

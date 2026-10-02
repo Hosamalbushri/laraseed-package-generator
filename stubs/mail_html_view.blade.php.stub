@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ SUBJECT }}</title>
+</head>
+<body>
+    <h1>{{ SUBJECT }}</h1>
+    <p>This is a transactional email message from {{ config('app.name') }}.</p>
+</body>
+</html>

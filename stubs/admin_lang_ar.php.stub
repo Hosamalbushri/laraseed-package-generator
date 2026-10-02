@@ -1,0 +1,8 @@
+<?php
+
+return [
+    'admin' => [
+        'title'   => 'إدارة {{ PACKAGE_TITLE }}',
+        'welcome' => 'مرحبًا بك في لوحة تحكم {{ PACKAGE_TITLE }}.',
+    ],
+];

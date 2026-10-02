@@ -1,0 +1,16 @@
+<?php
+
+namespace {{ NAMESPACE }}\Listeners;
+
+{{ EVENT_IMPORT }}
+
+class {{ LISTENER_NAME }}
+{
+    /**
+     * Handle the event.
+     */
+    public function handle({{ EVENT_TYPEHINT }} $event): void
+    {
+        //
+    }
+}

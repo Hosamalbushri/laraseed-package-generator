@@ -1,0 +1,11 @@
+<footer class="mt-auto border-t border-gray-200 bg-white py-8 transition-colors dark:border-gray-800 dark:bg-gray-900">
+    <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 text-center sm:flex-row sm:px-6 sm:text-start lg:px-8">
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+            &copy; {{ date('Y') }} {{ '{{ PACKAGE_TITLE }}' }}. @lang('{{ PACKAGE_KEY }}_web::app.web.footer.rights')
+        </p>
+
+        <p class="text-sm text-gray-400 dark:text-gray-500">
+            @lang('{{ PACKAGE_KEY }}_web::app.web.footer.tagline')
+        </p>
+    </div>
+</footer>

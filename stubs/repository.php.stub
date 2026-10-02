@@ -1,0 +1,18 @@
+<?php
+
+namespace {{ NAMESPACE }}\Repositories;
+
+use Webkul\Core\Eloquent\Repository;
+
+class {{ REPOSITORY_NAME }} extends Repository
+{
+    /**
+     * Specify Model class name
+     *
+     * @return string
+     */
+    public function model(): string
+    {
+        return '{{ MODEL_FQN }}';
+    }
+}

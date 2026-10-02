@@ -1,0 +1,13 @@
+<?php
+
+namespace {{ NAMESPACE }}\Tests\Feature;
+
+use {{ NAMESPACE }}\Tests\TestCase;
+
+class PackageTest extends TestCase
+{
+    public function test_package_is_loaded(): void
+    {
+        $this->assertTrue(true);
+    }
+}

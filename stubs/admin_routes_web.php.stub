@@ -1,0 +1,6 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use {{ NAMESPACE }}\Admin\Http\Controllers\AdminController;
+
+Route::get('{{ PACKAGE_SLUG }}', [AdminController::class, 'index'])->name('admin.{{ PACKAGE_KEY }}.index');

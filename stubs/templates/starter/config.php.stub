@@ -1,0 +1,91 @@
+<?php
+
+return [
+    /**
+     * Web Starter Template
+     */
+    'template' => '{{ TEMPLATE_ID }}',
+
+    /**
+     * Route prefix for Web capability.
+     * Set to empty string '' to claim root domain route [/].
+     */
+    'prefix' => '{{ PACKAGE_SLUG }}',
+
+    /**
+     * Middleware stack applied to all Web capability routes.
+     */
+    'middleware' => ['web'],
+
+    /**
+     * Branding configuration.
+     * Customize the visual identity and primary brand color.
+     */
+    'branding' => [
+        'name'  => '{{ PACKAGE_TITLE }}',
+        'color' => '#0E90D9',
+        'logo'  => null,
+    ],
+
+    /**
+     * Optional Web Authentication Configuration.
+     * Default: false (Public website mode).
+     */
+    'auth' => [
+        /**
+         * Enable or disable authentication integration.
+         */
+        'enabled' => false,
+
+        /**
+         * The authentication guard configured in config/auth.php.
+         * Example: 'customer', 'member', 'portal', 'user'.
+         */
+        'guard' => null,
+
+        /**
+         * Optional Laraseed package ID providing authentication.
+         * Example: 'customer', 'members'.
+         */
+        'provider_package' => null,
+
+        /**
+         * Named routes for login and logout actions.
+         * Logout route MUST support HTTP POST with CSRF protection.
+         */
+        'routes' => [
+            'login'  => null,
+            'logout' => null,
+        ],
+    ],
+
+    /**
+     * Navigation links configuration.
+     * Easily customize, reorder, or add navigation items across desktop and mobile menus.
+     */
+    'navigation' => [
+        'home' => [
+            'name'  => '{{ PACKAGE_KEY }}_web::app.web.home',
+            'route' => '{{ PACKAGE_KEY }}.web.home',
+            'sort'  => 1,
+        ],
+        'about' => [
+            'name'   => '{{ PACKAGE_KEY }}_web::app.web.about',
+            'route'  => '{{ PACKAGE_KEY }}.web.pages.show',
+            'params' => ['page' => 'about'],
+            'sort'   => 2,
+        ],
+        'features' => [
+            'name'   => '{{ PACKAGE_KEY }}_web::app.web.features',
+            'route'  => '{{ PACKAGE_KEY }}.web.pages.show',
+            'params' => ['page' => 'features'],
+            'sort'   => 3,
+        ],
+        'contact' => [
+            'name'   => '{{ PACKAGE_KEY }}_web::app.web.contact',
+            'route'  => '{{ PACKAGE_KEY }}.web.pages.show',
+            'params' => ['page' => 'contact'],
+            'sort'   => 4,
+        ],
+    ],
+];

@@ -1,0 +1,37 @@
+<?php
+
+namespace {{ NAMESPACE }}\Providers;
+
+use Illuminate\Support\ServiceProvider;
+
+class {{ PROVIDER_CLASS }} extends ServiceProvider
+{
+    /**
+     * Register services.
+     */
+    public function register(): void
+    {
+        if (file_exists(__DIR__ . '/../Config/{{ PACKAGE_ID }}.php')) {
+            $this->mergeConfigFrom(
+                __DIR__ . '/../Config/{{ PACKAGE_ID }}.php',
+                '{{ PACKAGE_ID }}'
+            );
+        }
+    }
+
+    /**
+     * Bootstrap services.
+     */
+    public function boot(): void
+    {
+        if ($this->app->runningInConsole() && is_dir(__DIR__ . '/../Console/Commands')) {
+            $commands = [];
+            foreach (glob(__DIR__ . '/../Console/Commands/*.php') as $file) {
+                $commands[] = '{{ NAMESPACE }}\\Console\\Commands\\' . basename($file, '.php');
+            }
+            if ($commands !== []) {
+                $this->commands($commands);
+            }
+        }
+    }
+}

@@ -1,0 +1,41 @@
+<?php
+
+return [
+    'web' => [
+        'title' => '{{ PACKAGE_TITLE }}',
+        'home' => 'Home',
+        'about' => 'About Us',
+        'features' => 'Features',
+        'contact' => 'Contact',
+        'auth' => [
+            'login' => 'Login',
+            'logout' => 'Logout',
+            'account' => 'Account',
+            'dashboard' => 'Dashboard',
+        ],
+        'hero' => [
+            'headline' => 'Welcome to {{ PACKAGE_TITLE }}',
+            'subheadline' => 'An independent, responsive, modern web interface built on Laraseed architecture.',
+            'primary_action' => 'Get Started',
+            'secondary_action' => 'Learn More',
+        ],
+        'highlights' => [
+            'fast' => [
+                'title' => 'Fast & Light',
+                'description' => 'Powered by Vite, Tailwind CSS, and optimized Blade components.',
+            ],
+            'modular' => [
+                'title' => 'Truly Modular',
+                'description' => 'Completely package-owned routes, templates, translations, and controllers.',
+            ],
+            'bilingual' => [
+                'title' => 'Arabic & English Ready',
+                'description' => 'Built-in support for RTL and LTR with Cairo typography out of the box.',
+            ],
+        ],
+        'footer' => [
+            'tagline' => 'Modern modular architecture with Laravel & Laraseed.',
+            'rights' => 'All rights reserved.',
+        ],
+    ],
+];

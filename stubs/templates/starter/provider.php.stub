@@ -1,0 +1,187 @@
+<?php
+
+namespace {{ NAMESPACE }}\Web\Providers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\ServiceProvider;
+use Webkul\Core\Contracts\AuthenticationRedirectResolver;
+
+class WebServiceProvider extends ServiceProvider
+{
+    /**
+     * Register services.
+     */
+    public function register(): void
+    {
+        if (file_exists(__DIR__ . '/../Config/web.php')) {
+            $this->mergeConfigFrom(__DIR__ . '/../Config/web.php', '{{ PACKAGE_KEY }}_web');
+        }
+
+        config([
+            'krayin-vite.viters.{{ PACKAGE_KEY }}_web' => [
+                'hot_file'                 => '{{ PACKAGE_KEY }}-web-vite.hot',
+                'build_directory'          => '{{ PACKAGE_SLUG }}/web/build',
+                'package_assets_directory' => 'src/Web/Resources/assets',
+            ],
+        ]);
+    }
+
+    /**
+     * Bootstrap services.
+     */
+    public function boot(): void
+    {
+        Blade::anonymousComponentPath(__DIR__ . '/../Resources/views/components', '{{ PACKAGE_KEY }}_web');
+
+        if (is_dir(__DIR__ . '/../Resources/views')) {
+            $this->loadViewsFrom(__DIR__ . '/../Resources/views', '{{ PACKAGE_KEY }}_web');
+        }
+
+        if (is_dir(__DIR__ . '/../Resources/lang')) {
+            $this->loadTranslationsFrom(__DIR__ . '/../Resources/lang', '{{ PACKAGE_KEY }}_web');
+        }
+
+        // Register package-owned auth middleware alias
+        $router = $this->app['router'];
+        $router->aliasMiddleware('{{ PACKAGE_KEY }}_auth', \{{ NAMESPACE }}\Web\Http\Middleware\AuthenticateWeb::class);
+
+        $authConfig = config('{{ PACKAGE_KEY }}_web.auth', []);
+        $authEnabled = (bool) ($authConfig['enabled'] ?? false);
+
+        // When auth is enabled, validate configuration contract and register redirection resolver rule
+        if ($authEnabled) {
+            $guard = $authConfig['guard'] ?? null;
+            if (! $guard || ! config("auth.guards.{$guard}")) {
+                throw new \RuntimeException(sprintf(
+                    'Authentication configuration error: Package [%s] specifies guard [%s], which is not defined in config/auth.php.',
+                    '{{ PACKAGE_KEY }}',
+                    $guard ?? 'null'
+                ));
+            }
+
+            $guardProvider = config("auth.guards.{$guard}.provider");
+            if ($guardProvider && ! config("auth.providers.{$guardProvider}")) {
+                throw new \RuntimeException(sprintf(
+                    'Authentication configuration error: Package [%s] specifies guard [%s] with undefined user provider [%s] in config/auth.php.',
+                    '{{ PACKAGE_KEY }}',
+                    $guard,
+                    $guardProvider
+                ));
+            }
+
+            $providerPackage = $authConfig['provider_package'] ?? null;
+            if ($providerPackage) {
+                $enabledPackages = config('laraseed.optional_packages.enabled', []);
+                if (! in_array($providerPackage, $enabledPackages, true)) {
+                    throw new \RuntimeException(sprintf(
+                        'Authentication configuration error: Package [%s] requires authentication provider package [%s], which is not currently enabled in LARASEED_OPTIONAL_PACKAGES.',
+                        '{{ PACKAGE_KEY }}',
+                        $providerPackage
+                    ));
+                }
+            }
+
+            $loginRoute = $authConfig['routes']['login'] ?? null;
+            if (! $loginRoute) {
+                throw new \RuntimeException(sprintf(
+                    'Authentication configuration error: Package [%s] requires a configured login route when authentication is enabled.',
+                    '{{ PACKAGE_KEY }}'
+                ));
+            }
+
+            if ($this->app->bound(AuthenticationRedirectResolver::class)) {
+                $rawPrefix = config('{{ PACKAGE_KEY }}_web.prefix');
+                $defaultPkg = (string) (config('laraseed.default_web_package') ?? config('laraseed.web.default_package') ?? '');
+                $isDefault = $defaultPkg !== '' && (
+                    strtolower(str_replace('-', '_', $defaultPkg)) === '{{ PACKAGE_KEY }}'
+                    || strtolower(str_replace('-', '_', $defaultPkg)) === '{{ PACKAGE_ID }}'
+                );
+                $prefix = $isDefault && ($rawPrefix === null || $rawPrefix === '' || $rawPrefix === '{{ PACKAGE_SLUG }}')
+                    ? ''
+                    : (string) ($rawPrefix ?? '{{ PACKAGE_SLUG }}');
+
+                $this->app->make(AuthenticationRedirectResolver::class)->register(
+                    '{{ PACKAGE_KEY }}_web',
+                    function (Request $request) use ($prefix): bool {
+                        $route = $request->route();
+
+                        if ($route) {
+                            $name = (string) $route->getName();
+                            if ($name !== '' && str_starts_with($name, '{{ PACKAGE_KEY }}.web.')) {
+                                return true;
+                            }
+
+                            $middleware = is_array($route->middleware()) ? $route->middleware() : [];
+                            if (in_array('{{ PACKAGE_KEY }}_auth', $middleware, true)) {
+                                return true;
+                            }
+
+                            // Resolved route does not belong to this package; do not intercept
+                            return false;
+                        }
+
+                        $normalized = trim($prefix, '/');
+                        if ($normalized !== '') {
+                            return $request->is($normalized) || $request->is($normalized . '/*');
+                        }
+
+                        return false;
+                    },
+                    function () use ($loginRoute): string {
+                        return route($loginRoute);
+                    },
+                    50
+                );
+            }
+
+        }
+
+        if (file_exists(__DIR__ . '/../Routes/web.php')) {
+            $defaultPkg = (string) (config('laraseed.default_web_package') ?? config('laraseed.web.default_package') ?? '');
+            $isDefault = $defaultPkg !== '' && (
+                strtolower(str_replace('-', '_', $defaultPkg)) === '{{ PACKAGE_KEY }}'
+                || strtolower(str_replace('-', '_', $defaultPkg)) === '{{ PACKAGE_ID }}'
+            );
+
+            $rawPrefix = config('{{ PACKAGE_KEY }}_web.prefix');
+
+            if ($isDefault && ($rawPrefix === null || $rawPrefix === '' || $rawPrefix === '{{ PACKAGE_SLUG }}')) {
+                $prefix = '';
+            } else {
+                $prefix = (string) ($rawPrefix ?? '{{ PACKAGE_SLUG }}');
+            }
+
+            $middleware = config('{{ PACKAGE_KEY }}_web.middleware', ['web']);
+            $normalizedPrefix = trim($prefix, '/');
+
+            // Guard against collision with core protected system route prefixes
+            $reservedPrefixes = ['admin', 'install', 'api', 'up', 'sanctum', (string) config('app.admin_path', 'admin')];
+            if ($normalizedPrefix !== '' && in_array($normalizedPrefix, array_filter($reservedPrefixes), true)) {
+                throw new \RuntimeException(sprintf(
+                    'Route conflict: Package [%s] specifies route prefix [%s], which conflicts with protected system route prefix.',
+                    '{{ PACKAGE_KEY }}',
+                    $normalizedPrefix
+                ));
+            }
+
+            if ($normalizedPrefix === '') {
+                $rootOwner = config('laraseed.web.root_owner');
+                if ($rootOwner && $rootOwner !== '{{ PACKAGE_KEY }}') {
+                    throw new \RuntimeException(sprintf(
+                        'Route conflict: Package [%s] attempted to claim the root route [/], but it is already owned by [%s]. Only one package may be root-mounted.',
+                        '{{ PACKAGE_KEY }}',
+                        $rootOwner
+                    ));
+                }
+                config(['laraseed.web.root_owner' => '{{ PACKAGE_KEY }}']);
+            }
+
+            Route::middleware($middleware)
+                ->prefix($prefix)
+                ->group(__DIR__ . '/../Routes/web.php');
+        }
+    }
+}
+

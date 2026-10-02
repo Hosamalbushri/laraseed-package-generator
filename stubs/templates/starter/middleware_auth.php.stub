@@ -1,0 +1,98 @@
+<?php
+
+namespace {{ NAMESPACE }}\Web\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+
+class AuthenticateWeb
+{
+    /**
+     * Handle an incoming request for protected Web capability routes.
+     *
+     * @param  Request  $request
+     * @param  Closure  $next
+     * @return mixed
+     *
+     * @throws \RuntimeException
+     */
+    public function handle(Request $request, Closure $next)
+    {
+        $authConfig = config('{{ PACKAGE_KEY }}_web.auth', []);
+        $enabled = (bool) ($authConfig['enabled'] ?? false);
+
+        if (! $enabled) {
+            throw new \RuntimeException(
+                'Authentication is disabled for package [{{ PACKAGE_KEY }}]. To protect routes, configure and enable auth in config/{{ PACKAGE_KEY }}_web.php.'
+            );
+        }
+
+        // Verify provider package availability if specified
+        $providerPackage = $authConfig['provider_package'] ?? null;
+        if ($providerPackage) {
+            $enabledPackages = config('laraseed.optional_packages.enabled', []);
+            if (! in_array($providerPackage, $enabledPackages, true)) {
+                throw new \RuntimeException(sprintf(
+                    'Authentication configuration error: Package [%s] requires authentication provider package [%s], which is not currently enabled in LARASEED_OPTIONAL_PACKAGES.',
+                    '{{ PACKAGE_KEY }}',
+                    $providerPackage
+                ));
+            }
+        }
+
+        // Verify guard definition in config/auth.php
+        $guard = $authConfig['guard'] ?? null;
+        if (! $guard || ! config("auth.guards.{$guard}")) {
+            throw new \RuntimeException(sprintf(
+                'Authentication configuration error: Package [%s] specifies guard [%s], which is not defined in config/auth.php.',
+                '{{ PACKAGE_KEY }}',
+                $guard ?? 'null'
+            ));
+        }
+
+        // Verify user provider definition for guard
+        $guardProvider = config("auth.guards.{$guard}.provider");
+        if ($guardProvider && ! config("auth.providers.{$guardProvider}")) {
+            throw new \RuntimeException(sprintf(
+                'Authentication configuration error: Package [%s] specifies guard [%s] with undefined user provider [%s] in config/auth.php.',
+                '{{ PACKAGE_KEY }}',
+                $guard,
+                $guardProvider
+            ));
+        }
+
+        // Enforce authentication check
+        if (! auth()->guard($guard)->check()) {
+            $loginRoute = $authConfig['routes']['login'] ?? null;
+            if (! $loginRoute || ! Route::has($loginRoute)) {
+                throw new \RuntimeException(sprintf(
+                    'Authentication configuration error: Package [%s] requires a valid named login route, but route [%s] is not defined.',
+                    '{{ PACKAGE_KEY }}',
+                    $loginRoute ?? 'null'
+                ));
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+
+            return redirect()->guest(route($loginRoute));
+        }
+
+        // Verify logout route supports POST if configured
+        $logoutRoute = $authConfig['routes']['logout'] ?? null;
+        if ($logoutRoute && Route::has($logoutRoute)) {
+            $routeInstance = Route::getRoutes()->getByName($logoutRoute);
+            if ($routeInstance && ! in_array('POST', $routeInstance->methods(), true)) {
+                throw new \RuntimeException(sprintf(
+                    'Authentication configuration error: Package [%s] configured logout route [%s], but it does not support HTTP POST with CSRF protection.',
+                    '{{ PACKAGE_KEY }}',
+                    $logoutRoute
+                ));
+            }
+        }
+
+        return $next($request);
+    }
+}

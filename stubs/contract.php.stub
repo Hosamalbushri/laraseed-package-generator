@@ -1,0 +1,7 @@
+<?php
+
+namespace {{ NAMESPACE }}\Contracts;
+
+interface {{ CONTRACT_NAME }}
+{
+}

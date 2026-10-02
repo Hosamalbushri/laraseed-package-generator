@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html
+    class="{{ request()->cookie('dark_mode') ? 'dark' : '' }}"
+    lang="{{ app()->getLocale() }}"
+    dir="{{ in_array(app()->getLocale(), ['fa', 'ar']) ? 'rtl' : 'ltr' }}"
+>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ $title ?? trans('{{ PACKAGE_KEY }}_web::app.web.title') }}</title>
+
+    @stack('meta')
+
+    <!-- Dynamic CSP-compliant Branding Stylesheet -->
+    <link rel="stylesheet" href="{{ route('{{ PACKAGE_KEY }}.web.branding.css') }}">
+
+    @php
+        $assetsBuilt = file_exists(public_path('{{ PACKAGE_KEY }}-web-vite.hot')) || file_exists(public_path('{{ PACKAGE_SLUG }}/web/build/manifest.json'));
+    @endphp
+
+    @if ($assetsBuilt)
+        {{
+            vite()->set(['src/Web/Resources/assets/css/app.css', 'src/Web/Resources/assets/js/app.js'], '{{ PACKAGE_KEY }}_web')
+        }}
+    @endif
+
+    @stack('styles')
+</head>
+<body class="min-h-screen bg-gray-50 text-gray-800 antialiased transition-colors duration-200 dark:bg-gray-950 dark:text-gray-100 flex flex-col font-cairo">
+    @if (! $assetsBuilt)
+        <aside class="bg-amber-600 text-white text-sm font-semibold px-4 py-2.5 text-center shadow-md flex items-center justify-center gap-2 relative z-50" role="alert">
+            <svg class="h-5 w-5 inline-block align-middle" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <span>[Laraseed Diagnostic] Frontend assets for <strong>{{ '{{ PACKAGE_TITLE }}' }}</strong> are not built. Run <code class="bg-black/25 px-1.5 py-0.5 rounded">npm run build</code> or <code class="bg-black/25 px-1.5 py-0.5 rounded">npm run dev</code> in <code class="bg-black/25 px-1.5 py-0.5 rounded">packages/{{ '{{ VENDOR }}' }}/{{ '{{ PACKAGE }}' }}</code>.</span>
+        </aside>
+    @endif
+
+    <div id="app" class="flex min-h-screen flex-col">
+        <x-{{ PACKAGE_KEY }}_web::layouts.header />
+
+        <main class="flex-1">
+            {{ $slot }}
+        </main>
+
+        <x-{{ PACKAGE_KEY }}_web::layouts.footer />
+    </div>
+
+    @stack('scripts')
+</body>
+</html>
