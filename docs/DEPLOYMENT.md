@@ -28,7 +28,7 @@ git pull origin main
 composer install --no-dev --optimize-autoloader --no-interaction
 
 # 3. Ensure environment variables are set for active optional packages
-# (e.g. in .env: LARASEED_OPTIONAL_PACKAGES="contacts,billing")
+# (e.g. in .env: LARASEED_OPTIONAL_PACKAGES="billing,store")
 
 # 4. Rebuild optimized Composer autoloader
 composer dump-autoload --optimize
@@ -51,7 +51,7 @@ php artisan queue:restart
 
 ### 2.1 Optimized Autoloading (`composer dump-autoload -o`)
 - **Recommended for Production:** `composer dump-autoload -o` converts all PSR-4 rules into a static classmap while retaining dynamic fallbacks.
-- **Compatibility:** Fully compatible with Laraseed's dynamic ClassLoader integration in [`config/laraseed.php`](file:///home/hosam/Documents/CampusHub-main/config/laraseed.php).
+- **Compatibility:** Fully compatible with Laraseed's dynamic ClassLoader integration in `config/laraseed.php`.
 
 ### 2.2 Authoritative Classmap Mode (`composer dump-autoload -a` / `--classmap-authoritative`)
 - **Behavior:** In authoritative mode, Composer sets `ClassLoader::$classMapAuthoritative = true`. Composer will strictly look up classes in `autoload_classmap.php` and **will not perform filesystem scans on disk** for missing classes.
@@ -68,10 +68,10 @@ A comma-separated list of package IDs (derived from `extra.laraseed.id` in `comp
 
 ```dotenv
 # Single package
-LARASEED_OPTIONAL_PACKAGES="contacts"
+LARASEED_OPTIONAL_PACKAGES="billing"
 
 # Multiple packages
-LARASEED_OPTIONAL_PACKAGES="contacts,billing,helpdesk"
+LARASEED_OPTIONAL_PACKAGES="billing,helpdesk,store"
 
 # All optional packages disabled
 LARASEED_OPTIONAL_PACKAGES=""
@@ -131,7 +131,6 @@ php artisan route:cache
 php artisan queue:restart
 ```
 
-
 ---
 
 ## 4. Filesystem Permissions & Lock Storage
@@ -139,7 +138,7 @@ php artisan queue:restart
 Laraseed Package Generator uses advisory file locks during generation and atomic capability updates.
 
 Ensure the following directories have read/write permissions for the web server and CLI users:
-- `storage/framework/locks/` — Directory used by [`PackageLock`](file:///home/hosam/Documents/CampusHub-main/packages/Laraseed/PackageGenerator/src/Support/PackageLock.php).
+- `storage/framework/locks/` — Directory used by [`PackageLock`](../src/Support/PackageLock.php).
 - `storage/framework/cache/`
 - `storage/logs/`
 - `packages/` (in development or build worker environments where generator commands execute).
@@ -170,7 +169,7 @@ If packages utilize `--broadcast` notifications:
 If a package encounters a runtime issue in production:
 1. Remove its identifier from `LARASEED_OPTIONAL_PACKAGES` in `.env`:
    ```dotenv
-   LARASEED_OPTIONAL_PACKAGES="contacts" # Removed broken package
+   LARASEED_OPTIONAL_PACKAGES="billing" # Removed broken package
    ```
 2. Clear and rebuild configuration cache:
    ```bash
@@ -180,4 +179,4 @@ If a package encounters a runtime issue in production:
 3. The package's service providers, routes, and Concord modules will be immediately deactivated without requiring code deletion or database drops.
 
 ### 6.2 Generator Transaction Failures
-If a generator command fails mid-operation (e.g. disk space exhaustion), [`FilesystemTransaction`](file:///home/hosam/Documents/CampusHub-main/packages/Laraseed/PackageGenerator/src/Generators/FilesystemTransaction.php) automatically rolls back created files. Check `storage/logs/laravel.log` for full exception stack traces.
+If a generator command fails mid-operation (e.g. disk space exhaustion), [`FilesystemTransaction`](../src/Generators/FilesystemTransaction.php) automatically rolls back created files. Check `storage/logs/laravel.log` for full exception stack traces.

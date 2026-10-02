@@ -77,9 +77,17 @@ class RootRoutingDeterminismAndProductionVerificationTest extends TestCase
     protected function sanitizeEnv(array $extraEnv = []): array
     {
         $env = $_SERVER;
-        $cleanTestEnv = [];
+        $cleanTestEnv = [
+            'APP_KEY'    => 'base64:YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=',
+            'APP_CIPHER' => 'AES-256-CBC',
+        ];
         foreach ($this->activeTestEnv as $k => $v) {
             $cleanTestEnv[$k] = trim((string) $v, '"\'');
+        }
+
+        $packageRoot = realpath(__DIR__ . '/../../');
+        if ($packageRoot) {
+            $env['TESTBENCH_WORKING_PATH'] = $packageRoot;
         }
 
         return array_merge($env, $cleanTestEnv, $extraEnv);
@@ -98,24 +106,37 @@ class RootRoutingDeterminismAndProductionVerificationTest extends TestCase
 
     protected function dispatchSubprocessHttp(string $uri, string $method = 'GET', array $extraEnv = []): array
     {
-        $phpCode = <<<'PHP'
-require __DIR__ . '/vendor/autoload.php';
-$app = require __DIR__ . '/bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+        $autoloadPath = $this->getSubprocessAutoloadPath();
+        $helpersPath = $this->getSubprocessHelpersPath();
 
-$uri = $argv[1] ?? '/';
-$method = $argv[2] ?? 'GET';
+        $phpCode = <<<PHP
+require_once '{$autoloadPath}';
+if (file_exists('{$helpersPath}')) {
+    require_once '{$helpersPath}';
+}
+\$app = require 'bootstrap/app.php';
+\$kernel = \$app->make('Illuminate\\\\Contracts\\\\Http\\\\Kernel');
+\$kernel->bootstrap();
 
-$request = Illuminate\Http\Request::create($uri, $method);
-$response = $kernel->handle($request);
+if (\$app->routesAreCached()) {
+    require \$app->getCachedRoutesPath();
+} elseif (file_exists(base_path('routes/web.php')) && ! \$app['router']->has('admin.session.create')) {
+    \$app['router']->middleware('web')->group(base_path('routes/web.php'));
+}
+
+\$uri = \$argv[1] ?? '/';
+\$method = \$argv[2] ?? 'GET';
+
+\$request = Illuminate\Http\Request::create(\$uri, \$method);
+\$response = \$kernel->handle(\$request);
 
 echo json_encode([
-    'status'  => $response->getStatusCode(),
-    'content' => $response->getContent(),
-    'headers' => $response->headers->all(),
+    'status'  => \$response->getStatusCode(),
+    'content' => \$response->getContent(),
+    'headers' => \$response->headers->all(),
 ]);
 
-$kernel->terminate($request, $response);
+\$kernel->terminate(\$request, \$response);
 PHP;
 
         $env = $this->sanitizeEnv($extraEnv);
@@ -132,10 +153,25 @@ PHP;
 
     protected function dispatchSubprocessEval(string $expression, array $extraEnv = []): mixed
     {
-        $phpCode = sprintf(
-            'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); echo json_encode(%s);',
-            $expression
-        );
+        $autoloadPath = $this->getSubprocessAutoloadPath();
+        $helpersPath = $this->getSubprocessHelpersPath();
+
+        $phpCode = <<<PHP
+require_once '{$autoloadPath}';
+if (file_exists('{$helpersPath}')) {
+    require_once '{$helpersPath}';
+}
+\$app = require 'bootstrap/app.php';
+\Illuminate\Support\Facades\Facade::setFacadeApplication(\$app);
+\$app->make('Illuminate\\\\Contracts\\\\Http\\\\Kernel')->bootstrap();
+\$app->boot();
+if (\$app->routesAreCached()) {
+    require \$app->getCachedRoutesPath();
+} elseif (file_exists(base_path('routes/web.php')) && ! \$app['router']->has('admin.session.create')) {
+    \$app['router']->middleware('web')->group(base_path('routes/web.php'));
+}
+echo json_encode({$expression});
+PHP;
 
         $env = $this->sanitizeEnv($extraEnv);
         $process = new Process(['php', '-r', $phpCode], base_path(), $env, timeout: 60);

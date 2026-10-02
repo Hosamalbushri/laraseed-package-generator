@@ -101,32 +101,32 @@ class RootMountedDefaultWebPackageTest extends TestCase
      */
     public function test_default_web_package_homepage_serves_directly_at_root_with_200_ok(): void
     {
-        $pkgDir = $this->trackDirectory('packages/AcmeMount/CampusHubPkg');
-        $this->artisan('laraseed:make-package AcmeMount/CampusHubPkg')->assertExitCode(0);
-        $this->artisan('laraseed:make-web AcmeMount/CampusHubPkg')->assertExitCode(0);
+        $pkgDir = $this->trackDirectory('packages/AcmeMount/PortalWebPkg');
+        $this->artisan('laraseed:make-package AcmeMount/PortalWebPkg')->assertExitCode(0);
+        $this->artisan('laraseed:make-web AcmeMount/PortalWebPkg')->assertExitCode(0);
 
         require_once "{$pkgDir}/src/Web/Http/Controllers/HomeController.php";
         require_once "{$pkgDir}/src/Web/Http/Controllers/PageController.php";
         require_once "{$pkgDir}/src/Web/Providers/WebServiceProvider.php";
 
         config([
-            'laraseed.optional_packages.enabled' => ['campus_hub_pkg'],
-            'laraseed.default_web_package'       => 'campus_hub_pkg',
+            'laraseed.optional_packages.enabled' => ['portal_web_pkg'],
+            'laraseed.default_web_package'       => 'portal_web_pkg',
             'laraseed.web.root_owner'            => null,
         ]);
 
-        $provider = $this->app->register(\AcmeMount\CampusHubPkg\Web\Providers\WebServiceProvider::class);
+        $provider = $this->app->register(\AcmeMount\PortalWebPkg\Web\Providers\WebServiceProvider::class);
         $this->app->call([$provider, 'boot']);
         $this->app['router']->getRoutes()->refreshNameLookups();
 
         // 1. GET / directly renders the package homepage without any redirect
         $response = $this->get('/');
         $response->assertOk();
-        $response->assertViewIs('acmemount_campus_hub_pkg_web::home.index');
-        $response->assertSee(trans('acmemount_campus_hub_pkg_web::app.web.title'));
+        $response->assertViewIs('acmemount_portal_web_pkg_web::home.index');
+        $response->assertSee(trans('acmemount_portal_web_pkg_web::app.web.title'));
 
         // 2. Assert root owner is claimed by this package
-        $this->assertSame('acmemount_campus_hub_pkg', config('laraseed.web.root_owner'));
+        $this->assertSame('acmemount_portal_web_pkg', config('laraseed.web.root_owner'));
     }
 
     /**
@@ -421,19 +421,25 @@ class RootMountedDefaultWebPackageTest extends TestCase
      */
     public function test_subprocess_config_cache_and_route_cache_with_default_package(): void
     {
-        $procClear = new Process(['php', 'artisan', 'optimize:clear'], base_path());
+        $env = array_merge($_SERVER, [
+            'APP_KEY'                => 'base64:YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=',
+            'APP_CIPHER'             => 'AES-256-CBC',
+            'TESTBENCH_WORKING_PATH' => realpath(__DIR__ . '/../../'),
+        ]);
+
+        $procClear = new Process(['php', 'artisan', 'optimize:clear'], base_path(), $env);
         $procClear->run();
         $this->assertSame(0, $procClear->getExitCode());
 
-        $procConfigCache = new Process(['php', 'artisan', 'config:cache'], base_path());
+        $procConfigCache = new Process(['php', 'artisan', 'config:cache'], base_path(), $env);
         $procConfigCache->run();
         $this->assertSame(0, $procConfigCache->getExitCode(), $procConfigCache->getErrorOutput());
 
-        $procRouteCache = new Process(['php', 'artisan', 'route:cache'], base_path());
+        $procRouteCache = new Process(['php', 'artisan', 'route:cache'], base_path(), $env);
         $procRouteCache->run();
         $this->assertSame(0, $procRouteCache->getExitCode(), $procRouteCache->getErrorOutput());
 
-        $procClear = new Process(['php', 'artisan', 'optimize:clear'], base_path());
+        $procClear = new Process(['php', 'artisan', 'optimize:clear'], base_path(), $env);
         $procClear->run();
     }
 }

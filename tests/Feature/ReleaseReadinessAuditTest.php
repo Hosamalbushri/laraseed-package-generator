@@ -78,9 +78,17 @@ class ReleaseReadinessAuditTest extends TestCase
     protected function sanitizeEnv(array $extraEnv = []): array
     {
         $env = $_SERVER;
-        $cleanTestEnv = [];
+        $cleanTestEnv = [
+            'APP_KEY'    => 'base64:YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=',
+            'APP_CIPHER' => 'AES-256-CBC',
+        ];
         foreach ($this->activeTestEnv as $k => $v) {
             $cleanTestEnv[$k] = trim((string) $v, '"\'');
+        }
+
+        $packageRoot = realpath(__DIR__ . '/../../');
+        if ($packageRoot) {
+            $env['TESTBENCH_WORKING_PATH'] = $packageRoot;
         }
 
         return array_merge($env, $cleanTestEnv, $extraEnv);
@@ -99,24 +107,37 @@ class ReleaseReadinessAuditTest extends TestCase
 
     protected function dispatchSubprocessHttp(string $uri, string $method = 'GET', array $extraEnv = []): array
     {
-        $phpCode = <<<'PHP'
-require __DIR__ . '/vendor/autoload.php';
-$app = require __DIR__ . '/bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+        $autoloadPath = $this->getSubprocessAutoloadPath();
+        $helpersPath = $this->getSubprocessHelpersPath();
 
-$uri = $argv[1] ?? '/';
-$method = $argv[2] ?? 'GET';
+        $phpCode = <<<PHP
+require_once '{$autoloadPath}';
+if (file_exists('{$helpersPath}')) {
+    require_once '{$helpersPath}';
+}
+\$app = require 'bootstrap/app.php';
+\$kernel = \$app->make('Illuminate\\\\Contracts\\\\Http\\\\Kernel');
+\$kernel->bootstrap();
 
-$request = Illuminate\Http\Request::create($uri, $method);
-$response = $kernel->handle($request);
+if (\$app->routesAreCached()) {
+    require \$app->getCachedRoutesPath();
+} elseif (file_exists(base_path('routes/web.php')) && ! \$app['router']->has('admin.session.create')) {
+    \$app['router']->middleware('web')->group(base_path('routes/web.php'));
+}
+
+\$uri = \$argv[1] ?? '/';
+\$method = \$argv[2] ?? 'GET';
+
+\$request = Illuminate\Http\Request::create(\$uri, \$method);
+\$response = \$kernel->handle(\$request);
 
 echo json_encode([
-    'status'  => $response->getStatusCode(),
-    'content' => $response->getContent(),
-    'headers' => $response->headers->all(),
+    'status'  => \$response->getStatusCode(),
+    'content' => \$response->getContent(),
+    'headers' => \$response->headers->all(),
 ]);
 
-$kernel->terminate($request, $response);
+\$kernel->terminate(\$request, \$response);
 PHP;
 
         $env = $this->sanitizeEnv($extraEnv);
@@ -152,21 +173,22 @@ PHP;
         $pkgDir = $this->trackDirectory('packages/AcmeAudit/ValidOptPkg');
         $this->artisan('laraseed:make-package AcmeAudit/ValidOptPkg --plain')->assertExitCode(0);
 
-        $evalCode = <<<'PHP'
-require __DIR__ . '/vendor/autoload.php';
-$app = require __DIR__ . '/bootstrap/app.php';
-foreach (spl_autoload_functions() as $func) {
-    if (is_array($func) && isset($func[0]) && $func[0] instanceof Composer\Autoload\ClassLoader) {
-        $prefixes = $func[0]->getPrefixesPsr4();
-        echo json_encode($prefixes['AcmeAudit\\ValidOptPkg\\'] ?? []);
+        $autoloadPath = $this->getSubprocessAutoloadPath();
+        $evalCode = <<<PHP
+require_once '{$autoloadPath}';
+\$app = require 'bootstrap/app.php';
+foreach (spl_autoload_functions() as \$func) {
+    if (is_array(\$func) && isset(\$func[0]) && \$func[0] instanceof Composer\Autoload\ClassLoader) {
+        \$prefixes = \$func[0]->getPrefixesPsr4();
+        echo json_encode(\$prefixes['AcmeAudit\\\\ValidOptPkg\\\\'] ?? []);
         exit(0);
     }
 }
 echo json_encode([]);
 PHP;
-        $proc = new Process(['php', '-r', $evalCode], base_path());
+        $proc = new Process(['php', '-r', $evalCode], base_path(), $this->sanitizeEnv());
         $proc->run();
-        $this->assertSame(0, $proc->getExitCode());
+        $this->assertSame(0, $proc->getExitCode(), $proc->getErrorOutput());
         $dirs = json_decode($proc->getOutput(), true);
         $this->assertNotEmpty($dirs);
         $this->assertSame($pkgDir . '/src', $dirs[0]);
@@ -191,22 +213,22 @@ PHP;
             ],
         ]));
 
-        // Subprocess bootstrap should not have Unauthorized\Pkg in PSR-4
-        $checkPhp = <<<'PHP'
-require __DIR__ . '/vendor/autoload.php';
-$app = require __DIR__ . '/bootstrap/app.php';
-foreach (spl_autoload_functions() as $func) {
-    if (is_array($func) && isset($func[0]) && $func[0] instanceof Composer\Autoload\ClassLoader) {
-        $prefixes = $func[0]->getPrefixesPsr4();
-        echo json_encode(isset($prefixes['Unauthorized\\Pkg\\']));
+        $autoloadPath = $this->getSubprocessAutoloadPath();
+        $checkPhp = <<<PHP
+require_once '{$autoloadPath}';
+\$app = require 'bootstrap/app.php';
+foreach (spl_autoload_functions() as \$func) {
+    if (is_array(\$func) && isset(\$func[0]) && \$func[0] instanceof Composer\Autoload\ClassLoader) {
+        \$prefixes = \$func[0]->getPrefixesPsr4();
+        echo json_encode(isset(\$prefixes['Unauthorized\\\\Pkg\\\\']));
         exit(0);
     }
 }
 echo json_encode(false);
 PHP;
-        $proc = new Process(['php', '-r', $checkPhp], base_path());
+        $proc = new Process(['php', '-r', $checkPhp], base_path(), $this->sanitizeEnv());
         $proc->run();
-        $this->assertSame(0, $proc->getExitCode());
+        $this->assertSame(0, $proc->getExitCode(), $proc->getErrorOutput());
         $this->assertSame('false', trim($proc->getOutput()));
     }
 
@@ -218,24 +240,24 @@ PHP;
         // 1. Corrupted JSON file
         file_put_contents($corruptDir . '/composer.json', '{ INVALID_JSON_SYNTAX');
 
-        // Application bootstrap must not crash
-        $checkPhp = <<<'PHP'
-require __DIR__ . '/vendor/autoload.php';
-$app = require __DIR__ . '/bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
-$kernel->bootstrap();
+        $autoloadPath = $this->getSubprocessAutoloadPath();
+        $checkPhp = <<<PHP
+require_once '{$autoloadPath}';
+\$app = require 'bootstrap/app.php';
+\$kernel = \$app->make(Illuminate\Contracts\Console\Kernel::class);
+\$kernel->bootstrap();
 echo "BOOTSTRAP_SUCCESS";
 PHP;
-        $proc = new Process(['php', '-r', $checkPhp], base_path());
+        $proc = new Process(['php', '-r', $checkPhp], base_path(), $this->sanitizeEnv());
         $proc->run();
-        $this->assertSame(0, $proc->getExitCode());
+        $this->assertSame(0, $proc->getExitCode(), $proc->getErrorOutput());
         $this->assertSame('BOOTSTRAP_SUCCESS', trim($proc->getOutput()));
 
         // 2. Non-array JSON (e.g. integer or string)
         file_put_contents($corruptDir . '/composer.json', '"just a string"');
-        $proc2 = new Process(['php', '-r', $checkPhp], base_path());
+        $proc2 = new Process(['php', '-r', $checkPhp], base_path(), $this->sanitizeEnv());
         $proc2->run();
-        $this->assertSame(0, $proc2->getExitCode());
+        $this->assertSame(0, $proc2->getExitCode(), $proc2->getErrorOutput());
         $this->assertSame('BOOTSTRAP_SUCCESS', trim($proc2->getOutput()));
     }
 
@@ -245,24 +267,25 @@ PHP;
         $this->artisan('laraseed:make-package AcmeAudit/DisabledPkg')->assertExitCode(0);
 
         // Subprocess: LARASEED_OPTIONAL_PACKAGES is empty
-        $evalCode = <<<'PHP'
-require __DIR__ . '/vendor/autoload.php';
-$app = require __DIR__ . '/bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
-$kernel->bootstrap();
+        $autoloadPath = $this->getSubprocessAutoloadPath();
+        $evalCode = <<<PHP
+require_once '{$autoloadPath}';
+\$app = require 'bootstrap/app.php';
+\$kernel = \$app->make(Illuminate\Contracts\Console\Kernel::class);
+\$kernel->bootstrap();
 
-$loadedProviders = array_keys($app->getLoadedProviders());
-$hasProvider = in_array('AcmeAudit\DisabledPkg\Providers\DisabledPkgServiceProvider', $loadedProviders, true);
-$classExists = class_exists('AcmeAudit\DisabledPkg\Providers\DisabledPkgServiceProvider');
+\$loadedProviders = array_keys(\$app->getLoadedProviders());
+\$hasProvider = in_array('AcmeAudit\\\\DisabledPkg\\\\Providers\\\\DisabledPkgServiceProvider', \$loadedProviders, true);
+\$classExists = class_exists('AcmeAudit\\\\DisabledPkg\\\\Providers\\\\DisabledPkgServiceProvider');
 
 echo json_encode([
-    'class_resolvable' => $classExists,
-    'provider_loaded'  => $hasProvider,
+    'class_resolvable' => \$classExists,
+    'provider_loaded'  => \$hasProvider,
 ]);
 PHP;
-        $proc = new Process(['php', '-r', $evalCode], base_path(), ['LARASEED_OPTIONAL_PACKAGES' => '']);
+        $proc = new Process(['php', '-r', $evalCode], base_path(), $this->sanitizeEnv(['LARASEED_OPTIONAL_PACKAGES' => '']));
         $proc->run();
-        $this->assertSame(0, $proc->getExitCode());
+        $this->assertSame(0, $proc->getExitCode(), $proc->getErrorOutput());
 
         $result = json_decode($proc->getOutput(), true);
         $this->assertTrue($result['class_resolvable'], 'Class should be resolvable via PSR-4 autoloader.');
@@ -274,29 +297,30 @@ PHP;
         $pkgDir = $this->trackDirectory('packages/AcmeAudit/IdempotentPkg');
         $this->artisan('laraseed:make-package AcmeAudit/IdempotentPkg --plain')->assertExitCode(0);
 
-        $evalCode = <<<'PHP'
-require __DIR__ . '/vendor/autoload.php';
+        $autoloadPath = $this->getSubprocessAutoloadPath();
+        $evalCode = <<<PHP
+require_once '{$autoloadPath}';
 // Boot app 1st time
-$app1 = require __DIR__ . '/bootstrap/app.php';
+\$app1 = require 'bootstrap/app.php';
 // Boot app 2nd time
-$app2 = require __DIR__ . '/bootstrap/app.php';
+\$app2 = require 'bootstrap/app.php';
 // Boot app 3rd time
-$app3 = require __DIR__ . '/bootstrap/app.php';
+\$app3 = require 'bootstrap/app.php';
 
-$loader = null;
-foreach (spl_autoload_functions() as $func) {
-    if (is_array($func) && isset($func[0]) && $func[0] instanceof Composer\Autoload\ClassLoader) {
-        $loader = $func[0];
+\$loader = null;
+foreach (spl_autoload_functions() as \$func) {
+    if (is_array(\$func) && isset(\$func[0]) && \$func[0] instanceof Composer\Autoload\ClassLoader) {
+        \$loader = \$func[0];
         break;
     }
 }
 
-$dirs = $loader->getPrefixesPsr4()['AcmeAudit\\IdempotentPkg\\'] ?? [];
-echo json_encode(['count' => count($dirs), 'dirs' => $dirs]);
+\$dirs = \$loader->getPrefixesPsr4()['AcmeAudit\\\\IdempotentPkg\\\\'] ?? [];
+echo json_encode(['count' => count(\$dirs), 'dirs' => \$dirs]);
 PHP;
-        $proc = new Process(['php', '-r', $evalCode], base_path());
+        $proc = new Process(['php', '-r', $evalCode], base_path(), $this->sanitizeEnv());
         $proc->run();
-        $this->assertSame(0, $proc->getExitCode());
+        $this->assertSame(0, $proc->getExitCode(), $proc->getErrorOutput());
 
         $result = json_decode($proc->getOutput(), true);
         $this->assertSame(1, $result['count'], 'Repeated bootstrap must not duplicate PSR-4 directory entries.');
@@ -312,15 +336,16 @@ PHP;
         $this->artisan('laraseed:make-package AcmeAudit/StandardOptPkg --plain')->assertExitCode(0);
 
         // 1. Standard mode
-        $evalStandard = <<<'PHP'
-require __DIR__ . '/vendor/autoload.php';
-$app = require __DIR__ . '/bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-echo json_encode(class_exists('AcmeAudit\StandardOptPkg\Providers\StandardOptPkgServiceProvider'));
+        $autoloadPath = $this->getSubprocessAutoloadPath();
+        $evalStandard = <<<PHP
+require_once '{$autoloadPath}';
+\$app = require 'bootstrap/app.php';
+\$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+echo json_encode(class_exists('AcmeAudit\\\\StandardOptPkg\\\\Providers\\\\StandardOptPkgServiceProvider'));
 PHP;
-        $procStandard = new Process(['php', '-r', $evalStandard], base_path());
+        $procStandard = new Process(['php', '-r', $evalStandard], base_path(), $this->sanitizeEnv());
         $procStandard->run();
-        $this->assertSame(0, $procStandard->getExitCode());
+        $this->assertSame(0, $procStandard->getExitCode(), $procStandard->getErrorOutput());
         $this->assertSame('true', trim($procStandard->getOutput()));
 
         // 2. Verify behavior with optimized classmap

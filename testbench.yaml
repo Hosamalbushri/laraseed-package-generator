@@ -1,0 +1,6 @@
+providers:
+  - Laraseed\PackageGenerator\Providers\PackageGeneratorServiceProvider
+workbench:
+  start: false
+  discovers:
+    web: true

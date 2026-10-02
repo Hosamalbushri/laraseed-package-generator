@@ -1,18 +1,37 @@
 {
     "name": "laraseed/package-generator",
-    "description": "Laraseed Optional Package Generator Development Tool",
+    "description": "Laraseed Modular Application Package Generator and Default Web Package Management Tool",
     "type": "library",
     "license": "MIT",
+    "homepage": "https://github.com/Hosamalbushri/laraseed-package-generator",
+    "support": {
+        "issues": "https://github.com/Hosamalbushri/laraseed-package-generator/issues",
+        "source": "https://github.com/Hosamalbushri/laraseed-package-generator"
+    },
+    "keywords": [
+        "laravel",
+        "laraseed",
+        "package-generator",
+        "modular-architecture",
+        "code-generation",
+        "web-packages"
+    ],
     "authors": [
         {
-            "name": "Laraseed Team"
+            "name": "Hosam Albushri",
+            "homepage": "https://github.com/Hosamalbushri"
         }
     ],
     "require": {
-        "php": "^8.3",
-        "illuminate/support": "^12.0",
-        "illuminate/console": "^12.0",
-        "illuminate/filesystem": "^12.0"
+        "php": "^8.2",
+        "illuminate/support": "^11.0|^12.0",
+        "illuminate/console": "^11.0|^12.0",
+        "illuminate/filesystem": "^11.0|^12.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5|^11.0",
+        "orchestra/testbench": "^9.0|^10.0",
+        "mockery/mockery": "^1.6"
     },
     "autoload": {
         "psr-4": {
@@ -30,5 +49,7 @@
                 "Laraseed\\PackageGenerator\\Providers\\PackageGeneratorServiceProvider"
             ]
         }
-    }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }

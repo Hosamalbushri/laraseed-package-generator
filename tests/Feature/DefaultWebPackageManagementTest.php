@@ -293,19 +293,25 @@ class DefaultWebPackageManagementTest extends TestCase
      */
     public function test_route_and_configuration_cache_clean_execution(): void
     {
-        $procClear = new Process(['php', 'artisan', 'optimize:clear'], base_path());
+        $env = array_merge($_SERVER, [
+            'APP_KEY'                => 'base64:YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=',
+            'APP_CIPHER'             => 'AES-256-CBC',
+            'TESTBENCH_WORKING_PATH' => realpath(__DIR__ . '/../../'),
+        ]);
+
+        $procClear = new Process(['php', 'artisan', 'optimize:clear'], base_path(), $env);
         $procClear->run();
         $this->assertSame(0, $procClear->getExitCode());
 
-        $procConfigCache = new Process(['php', 'artisan', 'config:cache'], base_path());
+        $procConfigCache = new Process(['php', 'artisan', 'config:cache'], base_path(), $env);
         $procConfigCache->run();
         $this->assertSame(0, $procConfigCache->getExitCode(), $procConfigCache->getErrorOutput());
 
-        $procRouteCache = new Process(['php', 'artisan', 'route:cache'], base_path());
+        $procRouteCache = new Process(['php', 'artisan', 'route:cache'], base_path(), $env);
         $procRouteCache->run();
         $this->assertSame(0, $procRouteCache->getExitCode(), $procRouteCache->getErrorOutput());
 
-        $procClear = new Process(['php', 'artisan', 'optimize:clear'], base_path());
+        $procClear = new Process(['php', 'artisan', 'optimize:clear'], base_path(), $env);
         $procClear->run();
     }
 

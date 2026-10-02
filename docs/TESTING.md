@@ -1,17 +1,19 @@
 # Testing Guide
 
-Laraseed Package Generator includes a comprehensive automated test suite consisting of 225 feature tests and 1,314 assertions.
+Laraseed Package Generator includes a comprehensive automated test suite consisting of **270 feature tests and 1,680 assertions**.
 
 ---
 
 ## Test Organization
 
-Package tests are located in `packages/Laraseed/PackageGenerator/tests/`:
+Package tests are organized within `tests/Feature/`:
 
 ```text
 tests/
 ├── Feature/
+│   ├── CleanInstallationVerificationTest.php
 │   ├── ConcurrentGenerationTest.php
+│   ├── DefaultWebPackageManagementTest.php
 │   ├── MailGeneratorTest.php
 │   ├── MiddlewareGeneratorTest.php
 │   ├── NotificationGeneratorTest.php
@@ -20,34 +22,42 @@ tests/
 │   ├── PackageGeneratorTest.php
 │   ├── PlainPackageGeneratorTest.php
 │   ├── ProxyGeneratorTest.php
+│   ├── ReleaseReadinessAuditTest.php
+│   ├── RootMountedDefaultWebPackageTest.php
+│   ├── RootRoutingDeterminismAndProductionVerificationTest.php
 │   ├── WebPackageGeneratorTest.php
 │   ├── WebPackageStrictCspAndSecurityTest.php
 │   └── WebTemplateRegistryTest.php
-└── TestCase.php
+├── TestCase.php
+└── helpers.php
 ```
 
 ---
 
 ## Running Package Tests
 
-### Standalone PHPUnit Execution
-Run tests directly using the package-level `phpunit.xml`:
+### 1. Standalone Package PHPUnit Execution
+From the root of this package repository:
 
 ```bash
-./vendor/bin/phpunit -c packages/Laraseed/PackageGenerator/phpunit.xml
+composer install
+vendor/bin/phpunit
 ```
 
-### Running Specific Test Suites
+### 2. Running Specific Test Suites
 ```bash
-# Run concurrency tests
-./vendor/bin/phpunit -c packages/Laraseed/PackageGenerator/phpunit.xml packages/Laraseed/PackageGenerator/tests/Feature/ConcurrentGenerationTest.php
+# Run concurrency exclusion tests
+vendor/bin/phpunit tests/Feature/ConcurrentGenerationTest.php
 
-# Run notification tests
-./vendor/bin/phpunit -c packages/Laraseed/PackageGenerator/phpunit.xml packages/Laraseed/PackageGenerator/tests/Feature/NotificationGeneratorTest.php
+# Run default web package management tests
+vendor/bin/phpunit tests/Feature/DefaultWebPackageManagementTest.php
+
+# Run root-mounted routing verification tests
+vendor/bin/phpunit tests/Feature/RootMountedDefaultWebPackageTest.php
 ```
 
-### Full Application Test Runner
-The host application automatically discovers all package tests via the `Packages` test suite:
+### 3. Running Inside a Laravel Host Application
+When developing within a Laravel host application:
 
 ```bash
 php artisan test

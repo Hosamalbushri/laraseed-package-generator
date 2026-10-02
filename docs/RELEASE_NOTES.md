@@ -1,14 +1,14 @@
 # Laraseed Package Generator V4 — Release Notes
 
 **Release Version:** 4.0.0  
-**Release Date:** 2026-10-02  
-**Target Platform:** Laravel 12.x / PHP 8.3+ (Tested on Laravel 12.61.1, PHP 8.4.1)
+**Release Date:** 2026-10-03  
+**Target Platform:** Laravel 11.x / 12.x & PHP 8.2+ (Tested on PHP 8.2, 8.3, 8.4)
 
 ---
 
 ## Overview
 
-Laraseed Package Generator V4 introduces a modernized, secure, and highly extensible scaffolding framework for building modular Laravel applications and standalone domain libraries. V4 adds support for lightweight PSR-4 packages, atomic Concord contract and model proxy generation, comprehensive presentation scaffolding (middleware, mail, notifications), extensible web templates, cross-process concurrency locking, and seamless pre-autoload runtime bootstrap.
+Laraseed Package Generator V4 introduces a modernized, secure, and highly extensible scaffolding framework for building modular Laravel applications and standalone domain libraries. V4 adds support for lightweight PSR-4 packages, atomic Concord contract and model proxy generation, comprehensive presentation scaffolding (middleware, mail, notifications), extensible web templates, cross-process concurrency locking, default web package root mounting, and seamless pre-autoload runtime bootstrap.
 
 ---
 
@@ -30,16 +30,21 @@ Laraseed Package Generator V4 introduces a modernized, secure, and highly extens
 
 ### 4. Pluggable Web Capability & Templates
 - `laraseed:make-web` scaffolds frontend web capabilities with Vite, Tailwind CSS, and Blade layouts.
-- Dynamic template registry via [`WebTemplateCatalog`](file:///home/hosam/Documents/CampusHub-main/packages/Laraseed/PackageGenerator/src/Templates/WebTemplateCatalog.php), supporting custom template registration via `config/laraseed.php`.
+- Dynamic template registry via [`WebTemplateCatalog`](../src/Templates/WebTemplateCatalog.php), supporting custom template registration via `config/package-generator.php`.
 - Full compliance with strict Content Security Policy (CSP) headers (zero inline event handlers or unsafe scripts).
 
-### 5. Enterprise Filesystem Transactions & Concurrency Safety
-- **Filesystem Locking:** [`PackageLock`](file:///home/hosam/Documents/CampusHub-main/packages/Laraseed/PackageGenerator/src/Support/PackageLock.php) enforces cross-process mutual exclusion via advisory file locks and PID tracking, eliminating race conditions during parallel capability scaffolding.
-- **Transactional Rollback:** [`FilesystemTransaction`](file:///home/hosam/Documents/CampusHub-main/packages/Laraseed/PackageGenerator/src/Generators/FilesystemTransaction.php) ensures atomic plan execution, rolling back all created files and restoring manifests if any step fails.
-- **Path Traversal Containment:** [`PathGuard`](file:///home/hosam/Documents/CampusHub-main/packages/Laraseed/PackageGenerator/src/Support/PathGuard.php) strictly confines all generator file operations to authorized package directories.
+### 5. Root-Mounted Default Web Package Management
+- `laraseed:web-default` command allows inspecting, validating, selecting, and clearing the active default Web package.
+- Root-mounted default Web package serves directly at `GET /` with HTTP 200 OK and zero redirects.
+- Automatic routing collision avoidance against reserved system prefixes (`admin`, `install`, `api`, `up`, `sanctum`).
 
-### 6. Dynamic ClassLoader Mapping & Bootstrap Resilience
-- Refactored [`config/laraseed.php`](file:///home/hosam/Documents/CampusHub-main/config/laraseed.php) to register local package namespaces directly into Composer's live `ClassLoader`.
+### 6. Enterprise Filesystem Transactions & Concurrency Safety
+- **Filesystem Locking:** [`PackageLock`](../src/Support/PackageLock.php) enforces cross-process mutual exclusion via advisory file locks and PID tracking, eliminating race conditions during parallel capability scaffolding.
+- **Transactional Rollback:** [`FilesystemTransaction`](../src/Generators/FilesystemTransaction.php) ensures atomic plan execution, rolling back all created files and restoring manifests if any step fails.
+- **Path Traversal Containment:** [`PathGuard`](../src/Support/PathGuard.php) strictly confines all generator file operations to authorized package directories.
+
+### 7. Dynamic ClassLoader Mapping & Bootstrap Resilience
+- Registers local package namespaces directly into Composer's live `ClassLoader`.
 - Resolves the pre-autoload Catch-22 bootstrap issue, allowing immediate execution of Artisan commands without requiring manual `composer dump-autoload`.
 - Active and inactive package partitioning ensures dormant packages on disk never halt core application bootstrap.
 
@@ -48,13 +53,13 @@ Laraseed Package Generator V4 introduces a modernized, secure, and highly extens
 ## Upgrading & Compatibility
 
 ### Requirements
-- **PHP:** `^8.3` or `^8.4`
-- **Laravel:** `^12.0`
-- **Konekt Concord:** `^1.17`
+- **PHP:** `^8.2`
+- **Laravel Framework:** `^11.0` or `^12.0`
+- **Composer:** `^2.2`
 
 ### Backward Compatibility
 - 100% backward compatible with packages created in Laraseed V2 and V3.
-- Core Foundation (`packages/Webkul/*`) and domain packages (`packages/Laraseed/Contacts/*`) require zero modifications.
+- Core Foundation packages require zero modifications.
 
 ---
 

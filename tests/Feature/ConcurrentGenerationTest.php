@@ -191,15 +191,15 @@ class ConcurrentGenerationTest extends TestCase
         $packageId = 'AcmeConcurrent/SubprocessPkg';
         $signalFile = base_path('packages/AcmeConcurrent_signal_' . uniqid() . '.tmp');
 
-        // Subprocess script acquires lock on package, signals readiness, sleeps 1.2s, then releases
+        $autoloadPath = $this->getSubprocessAutoloadPath();
         $subProcessScript = sprintf(
-            <<<'PHP'
-require 'vendor/autoload.php';
-$app = require 'bootstrap/app.php';
-$app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+            <<<PHP
+require_once '{$autoloadPath}';
+\$app = require 'bootstrap/app.php';
+\$app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
-$lock = $app->make(\Laraseed\PackageGenerator\Support\PackageLock::class);
-$lock->withLock('%s', function () use ($lock) {
+\$lock = \$app->make(\Laraseed\PackageGenerator\Support\PackageLock::class);
+\$lock->withLock('%s', function () use (\$lock) {
     file_put_contents('%s', 'LOCKED');
     usleep(1200000); // 1.2s
 });
@@ -208,7 +208,16 @@ PHP,
             $signalFile
         );
 
-        $process = new Process([PHP_BINARY, '-r', $subProcessScript], base_path());
+        $env = array_merge($_SERVER, [
+            'APP_KEY'    => 'base64:YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=',
+            'APP_CIPHER' => 'AES-256-CBC',
+        ]);
+        $packageRoot = realpath(__DIR__ . '/../../');
+        if ($packageRoot) {
+            $env['TESTBENCH_WORKING_PATH'] = $packageRoot;
+        }
+
+        $process = new Process([PHP_BINARY, '-r', $subProcessScript], base_path(), $env);
         $process->start();
 
         // Wait up to 3 seconds for subprocess to acquire lock and create signal file

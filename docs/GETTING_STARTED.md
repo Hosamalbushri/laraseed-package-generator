@@ -1,26 +1,47 @@
 # Getting Started with Laraseed Package Generator
 
-This guide walks you through setting up and using the Laraseed Package Generator in a Laravel project.
+This guide walks you through installing and using the Laraseed Package Generator in any Laravel application.
 
 ---
 
 ## 1. Prerequisites
 
-- PHP `>= 8.3` (tested with PHP 8.4)
-- Laravel `>= 12.0`
-- Composer 2.x
+- **PHP:** `^8.2` (tested on PHP 8.2, 8.3, and 8.4)
+- **Laravel Framework:** `^11.0` or `^12.0`
+- **Composer:** 2.x
 
 ---
 
 ## 2. Installation
 
-Add `laraseed/package-generator` as a development requirement:
+### A. Before Packagist Publication (VCS Repository)
+
+Add the Git repository to your project's `composer.json`:
+
+```json
+"repositories": [
+    {
+        "type": "vcs",
+        "url": "https://github.com/Hosamalbushri/laraseed-package-generator.git"
+    }
+]
+```
+
+Then install the package as a development dependency:
+
+```bash
+composer require --dev laraseed/package-generator:dev-main
+```
+
+### B. After Packagist Publication
+
+Once published to Packagist:
 
 ```bash
 composer require --dev laraseed/package-generator
 ```
 
-Verify that the commands are registered:
+Laravel's package auto-discovery will automatically register the service provider. Verify that commands are registered:
 
 ```bash
 php artisan list laraseed
@@ -34,16 +55,16 @@ php artisan list laraseed
 ```bash
 php artisan laraseed:make-package Acme/Billing
 ```
-This generates:
+This scaffolds:
 - `packages/Acme/Billing/composer.json`
 - `packages/Acme/Billing/src/Providers/BillingServiceProvider.php`
-- Directory structure for Contracts, Database, Events, Http, Models, and Repositories.
+- Standard directory structure for Contracts, Database, Events, Http, Models, and Repositories.
 
 ### Plain PSR-4 Library
 ```bash
 php artisan laraseed:make-package Acme/Helper --plain
 ```
-This generates a minimalist library structure with clean Composer autoloading.
+This generates a minimalist library structure with clean Composer autoloading and standard service provider.
 
 ---
 
@@ -68,18 +89,31 @@ php artisan laraseed:make-mail Acme/Billing InvoiceReceipt --markdown=emails.rec
 php artisan laraseed:make-notification Acme/Billing InvoiceDue --database --broadcast --queued
 ```
 
+### Admin & Web Capabilities
+```bash
+# Admin Panel Module (DataGrid, ACL, Menu, Routes)
+php artisan laraseed:make-admin Acme/Billing
+
+# Public Web Capability (Vite, Tailwind, Blade Views)
+php artisan laraseed:make-web Acme/Billing --template=starter
+```
+
 ---
 
-## 5. Activating the Package
+## 5. Activating the Package & Default Web Selection
 
-Enable the package in your `.env` configuration:
-
+### Activate the Package in .env
 ```dotenv
 LARASEED_OPTIONAL_PACKAGES="billing"
 ```
 
-Verify loaded packages:
-
+### Inspect Discovered and Enabled Packages
 ```bash
 php artisan laraseed:packages
 ```
+
+### Mount as Default Web Package (Root `/` Entry Point)
+```bash
+php artisan laraseed:web-default billing
+```
+This configures the package to serve directly at `/` with HTTP 200 OK and zero redirects.

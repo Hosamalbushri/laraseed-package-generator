@@ -43,6 +43,21 @@ class PackageDiscoveryAndBootstrapTest extends TestCase
         return $abs;
     }
 
+    protected function runArtisanProcess(array $args, array $customEnv = []): Process
+    {
+        $packageRoot = realpath(__DIR__ . '/../../');
+        $env = array_merge($_SERVER, [
+            'APP_KEY'                => 'base64:YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=',
+            'APP_CIPHER'             => 'AES-256-CBC',
+            'TESTBENCH_WORKING_PATH' => $packageRoot,
+        ], $customEnv);
+
+        $process = new Process(array_merge(['php', 'artisan'], $args), base_path(), $env);
+        $process->run();
+
+        return $process;
+    }
+
     /**
      * 1. Freshly generated package does not crash Artisan bootstrap before composer dump-autoload.
      */
@@ -52,8 +67,7 @@ class PackageDiscoveryAndBootstrapTest extends TestCase
         $this->artisan('laraseed:make-package AcmeDiscov/FreshPkg')->assertExitCode(0);
 
         // Execute real independent CLI process without composer dump-autoload
-        $process = new Process(['php', 'artisan', 'list', '--raw'], base_path());
-        $process->run();
+        $process = $this->runArtisanProcess(['list', '--raw']);
 
         $this->assertSame(0, $process->getExitCode(), 'Artisan failed to start after fresh package generation: ' . $process->getErrorOutput() . $process->getOutput());
         $this->assertStringContainsString('laraseed:make-package', $process->getOutput());
@@ -67,7 +81,9 @@ class PackageDiscoveryAndBootstrapTest extends TestCase
         $this->trackDirectory('packages/AcmeDiscov/DumpPkg');
         $this->artisan('laraseed:make-package AcmeDiscov/DumpPkg')->assertExitCode(0);
 
-        $process = new Process(['composer', 'dump-autoload', '--no-interaction'], base_path());
+        $packageRoot = realpath(__DIR__ . '/../../');
+        $env = array_merge($_SERVER, ['TESTBENCH_WORKING_PATH' => $packageRoot]);
+        $process = new Process(['composer', 'dump-autoload', '--no-interaction'], base_path(), $env);
         $process->run();
 
         $this->assertSame(0, $process->getExitCode(), 'composer dump-autoload failed: ' . $process->getErrorOutput() . $process->getOutput());
@@ -92,8 +108,7 @@ class PackageDiscoveryAndBootstrapTest extends TestCase
             ],
         ]));
 
-        $process = new Process(['php', 'artisan', 'list', '--raw'], base_path(), ['LARASEED_OPTIONAL_PACKAGES' => '']);
-        $process->run();
+        $process = $this->runArtisanProcess(['list', '--raw'], ['LARASEED_OPTIONAL_PACKAGES' => '']);
 
         $this->assertSame(0, $process->getExitCode(), 'Inactive broken package caused bootstrap crash: ' . $process->getErrorOutput() . $process->getOutput());
     }
@@ -117,10 +132,9 @@ class PackageDiscoveryAndBootstrapTest extends TestCase
             ],
         ]));
 
-        $process = new Process(['php', 'artisan', 'list'], base_path(), ['LARASEED_OPTIONAL_PACKAGES' => 'broken_active_pkg']);
-        $process->run();
+        $process = $this->runArtisanProcess(['list'], ['LARASEED_OPTIONAL_PACKAGES' => 'broken_active_pkg']);
 
-        $this->assertSame(1, $process->getExitCode(), 'Active package with missing provider should fail.');
+        $this->assertNotSame(0, $process->getExitCode(), 'Active package with missing provider should fail.');
         $this->assertStringContainsString('Optional package [broken_active_pkg] declares an invalid provider class', $process->getOutput() . $process->getErrorOutput());
     }
 
@@ -133,14 +147,12 @@ class PackageDiscoveryAndBootstrapTest extends TestCase
         $this->artisan('laraseed:make-package AcmeDiscov/LifecyclePkg')->assertExitCode(0);
 
         // When deactivated (empty env)
-        $procDeactivated = new Process(['php', 'artisan', 'config:show', 'laraseed.optional_packages.enabled'], base_path(), ['LARASEED_OPTIONAL_PACKAGES' => '']);
-        $procDeactivated->run();
+        $procDeactivated = $this->runArtisanProcess(['config:show', 'laraseed.optional_packages.enabled'], ['LARASEED_OPTIONAL_PACKAGES' => '']);
         $this->assertSame(0, $procDeactivated->getExitCode());
         $this->assertStringNotContainsString('lifecycle_pkg', $procDeactivated->getOutput());
 
         // When activated (env contains lifecycle_pkg)
-        $procActivated = new Process(['php', 'artisan', 'config:show', 'laraseed.optional_packages.enabled'], base_path(), ['LARASEED_OPTIONAL_PACKAGES' => 'lifecycle_pkg']);
-        $procActivated->run();
+        $procActivated = $this->runArtisanProcess(['config:show', 'laraseed.optional_packages.enabled'], ['LARASEED_OPTIONAL_PACKAGES' => 'lifecycle_pkg']);
         $this->assertSame(0, $procActivated->getExitCode());
         $this->assertStringContainsString('lifecycle_pkg', $procActivated->getOutput());
     }
@@ -168,8 +180,7 @@ class PackageDiscoveryAndBootstrapTest extends TestCase
             ],
         ]));
 
-        $process = new Process(['php', 'artisan', 'list', '--raw'], base_path(), ['LARASEED_OPTIONAL_PACKAGES' => '']);
-        $process->run();
+        $process = $this->runArtisanProcess(['list', '--raw'], ['LARASEED_OPTIONAL_PACKAGES' => '']);
 
         $this->assertSame(0, $process->getExitCode());
     }
@@ -185,10 +196,9 @@ class PackageDiscoveryAndBootstrapTest extends TestCase
         $this->artisan('laraseed:make-package AcmeDiscov/MultiPkgOne')->assertExitCode(0);
         $this->artisan('laraseed:make-package AcmeDiscov/MultiPkgTwo')->assertExitCode(0);
 
-        $process = new Process(['php', 'artisan', 'config:show', 'laraseed.optional_packages.enabled'], base_path(), [
+        $process = $this->runArtisanProcess(['config:show', 'laraseed.optional_packages.enabled'], [
             'LARASEED_OPTIONAL_PACKAGES' => 'multi_pkg_one,multi_pkg_two',
         ]);
-        $process->run();
 
         $this->assertSame(0, $process->getExitCode());
         $output = $process->getOutput();

@@ -2,9 +2,10 @@
 
 [![Latest Version](https://img.shields.io/badge/version-4.0.0-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests: 225 Passed](https://img.shields.io/badge/tests-225%20passed-brightgreen.svg)](tests/)
+[![Tests: 270 Passed](https://img.shields.io/badge/tests-270%20passed-brightgreen.svg)](tests/)
+[![GitHub Actions CI](https://github.com/Hosamalbushri/laraseed-package-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/Hosamalbushri/laraseed-package-generator/actions)
 
-An enterprise-grade modular scaffolding and lifecycle management engine for Laravel 12. Generates fully isolated, self-contained packages with domain models, contracts, Concord proxies, HTTP middleware, mail, notifications, admin panels, web capabilities, and transactional filesystem operations.
+An enterprise-grade modular scaffolding and lifecycle management engine for Laravel 11 and Laravel 12. Generates fully isolated, self-contained packages with domain models, contracts, Concord proxies, HTTP middleware, mail, notifications, admin panels, web capabilities, and transactional filesystem operations.
 
 ---
 
@@ -14,6 +15,7 @@ An enterprise-grade modular scaffolding and lifecycle management engine for Lara
 - **Atomic Model & Proxy Composition:** Scaffold Eloquent Model, Contract interface, and Concord ModelProxy atomically via `laraseed:make-model <pkg> <model> --contract --proxy`.
 - **Presentation & Messaging Generators:** Scaffold standard HTTP Controllers (`--api`), Middleware, Mailables (HTML/Markdown views), and Multi-Channel Notifications (`--broadcast`, `--database`, `--queued`).
 - **Extensible Web Capability:** Scaffolds Vite and Tailwind-driven frontend templates with strict Content Security Policy (CSP) compliance and pluggable template registration.
+- **Default Web Package Manager:** Select and mount any enabled Web package directly at root `/` (`laraseed:web-default`) with zero HTTP redirects.
 - **Enterprise Concurrency & Safety:** Advisory file locking ([`PackageLock`](src/Support/PackageLock.php)), atomic filesystem transactions ([`FilesystemTransaction`](src/Generators/FilesystemTransaction.php)), and path containment ([`PathGuard`](src/Support/PathGuard.php)).
 - **Seamless Bootstrap:** Dynamic PSR-4 ClassLoader bridge eliminates Catch-22 bootstrap deadlocks before `composer dump-autoload` is executed.
 
@@ -21,7 +23,28 @@ An enterprise-grade modular scaffolding and lifecycle management engine for Lara
 
 ## Installation
 
-Add the package to your `composer.json` repositories (for local path packages) or install via Composer:
+### A. Before Packagist Publication (VCS Repository)
+
+Add the Git repository to your Laravel application's `composer.json`:
+
+```json
+"repositories": [
+    {
+        "type": "vcs",
+        "url": "https://github.com/Hosamalbushri/laraseed-package-generator.git"
+    }
+]
+```
+
+Then install development dependency:
+
+```bash
+composer require --dev laraseed/package-generator:dev-main
+```
+
+### B. After Packagist Publication
+
+Once published on Packagist, install directly via Composer:
 
 ```bash
 composer require --dev laraseed/package-generator
@@ -71,6 +94,18 @@ php artisan laraseed:make-admin Acme/Billing
 php artisan laraseed:make-web Acme/Billing --template=starter
 ```
 
+### 5. Manage Default Web Entry Point
+```bash
+# List discovered Web packages
+php artisan laraseed:web-default --list
+
+# Set billing package as root web entry point (serves directly at / with zero redirects)
+php artisan laraseed:web-default billing
+
+# Revert to core fallback landing page
+php artisan laraseed:web-default --clear
+```
+
 ---
 
 ## Documentation
@@ -78,7 +113,7 @@ php artisan laraseed:make-web Acme/Billing --template=starter
 Detailed documentation is available in the [`docs/`](docs/) directory:
 
 - [Getting Started](docs/GETTING_STARTED.md) — Step-by-step setup and package creation workflow.
-- [Command Reference](docs/COMMAND_REFERENCE.md) — Comprehensive guide to all 16 Artisan commands and options.
+- [Command Reference](docs/COMMAND_REFERENCE.md) — Comprehensive guide to all 22 Artisan commands and options.
 - [Architecture & Design](docs/ARCHITECTURE.md) — Deep dive into generator internals, transactions, concurrency locks, and discovery.
 - [Configuration Guide](docs/CONFIGURATION.md) — Configuration options and environment settings.
 - [Web Templates Guide](docs/TEMPLATES.md) — Creating and registering custom frontend templates.
@@ -93,17 +128,24 @@ Detailed documentation is available in the [`docs/`](docs/) directory:
 
 ## Running Tests
 
-Execute package tests using the package's PHPUnit configuration:
+In a standalone checkout of this repository:
 
 ```bash
-./vendor/bin/phpunit -c packages/Laraseed/PackageGenerator/phpunit.xml
+composer install
+vendor/bin/phpunit
 ```
 
-Or via the host application's test runner:
+Or within a Laravel host application:
 
 ```bash
-php artisan test packages/Laraseed/PackageGenerator/tests/
+php artisan test
 ```
+
+---
+
+## Contributing
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on code contributions, standards, and test execution.
 
 ---
 
